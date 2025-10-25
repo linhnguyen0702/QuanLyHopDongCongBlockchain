@@ -1,0 +1,18 @@
+{
+  "name": "quan-ly-hop-dong-cong",
+  "version": "1.0.0",
+  "description": "Website quản lý hợp đồng công sử dụng ReactJS + Node.js + Hyperledger",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["contract", "management", "hyperledger", "react", "nodejs"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
