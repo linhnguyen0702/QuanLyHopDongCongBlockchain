@@ -1,8 +1,11 @@
 import axios from 'axios';
 
 // Create axios instance
+const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+console.log('🔗 API Base URL:', baseURL);
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: baseURL,
   timeout: 10000,
 });
 
@@ -13,6 +16,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Thêm cache-busting headers cho API users
+    if (config.url && config.url.includes('/users')) {
+      config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      config.headers['Pragma'] = 'no-cache';
+      config.headers['Expires'] = '0';
+    }
+    
     return config;
   },
   (error) => {
@@ -62,6 +73,7 @@ export const contractAPI = {
 export const userAPI = {
   getUsers: (params) => api.get('/users', { params }),
   getUser: (id) => api.get(`/users/${id}`),
+  createUser: (userData) => api.post('/users', userData),
   updateUser: (id, userData) => api.put(`/users/${id}`, userData),
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.post(`/users/${id}/activate`),

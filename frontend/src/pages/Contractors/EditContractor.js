@@ -18,6 +18,7 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Business as BusinessIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -55,7 +56,7 @@ const EditContractor = () => {
     () => contractorAPI.getContractor(id),
     {
       enabled: !!id,
-      select: (data) => data.data.contractor
+      select: (data) => data.data?.data?.contractor
     }
   );
 
@@ -197,9 +198,18 @@ const EditContractor = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
-        Chỉnh sửa nhà thầu
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/contractors')}
+          sx={{ mr: 2 }}
+        >
+          Quay lại
+        </Button>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+          Chỉnh sửa nhà thầu
+        </Typography>
+      </Box>
 
       <Card>
         <CardContent>

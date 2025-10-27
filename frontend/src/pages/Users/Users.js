@@ -24,8 +24,10 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Person as PersonIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useNavigate } from 'react-router-dom';
 import { userAPI } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -93,6 +95,8 @@ const UserCard = ({ user, onMenuClick }) => {
 };
 
 const Users = () => {
+  console.log('🚀 Users component is rendering...');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
@@ -100,18 +104,32 @@ const Users = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { user: currentUser, isAdmin } = useAuth();
+  
+  // Debug logs (có thể xóa sau khi ổn định)
+  console.log('🔐 Auth info:', { currentUser: currentUser?.email, isAdmin });
 
-  const { data: usersData, isLoading } = useQuery(
-    ['users', { search: searchTerm, role: roleFilter }],
+  const { data: usersResponseRaw, isLoading, error, refetch } = useQuery(
+    'users',
     () => userAPI.getUsers({
       search: searchTerm,
       role: roleFilter,
+      _t: Date.now(), // Thêm timestamp để bypass cache
     }),
     {
-      keepPreviousData: true,
+      refetchOnWindowFocus: true,
+      // enabled: isAdmin, // Tạm thời bỏ để debug
+      staleTime: 0, // Luôn coi data là stale để force refetch
+      cacheTime: 0, // Không cache data
     }
   );
+  
+  const usersData = usersResponseRaw?.data;
+  const users = usersData?.data?.users || []; // Sửa lỗi parsing - users nằm ở data.data.users
+
+  // Debug logs (có thể xóa sau khi ổn định)
+  console.log('📊 Users loaded:', { usersLength: users.length, isAdmin });
 
   const deleteUserMutation = useMutation(
     (userId) => userAPI.deleteUser(userId),
@@ -138,7 +156,7 @@ const Users = () => {
   };
 
   const handleEdit = () => {
-    // Implement edit functionality
+    navigate(`/users/${selectedUser._id}/edit`);
     handleMenuClose();
   };
 
@@ -151,28 +169,62 @@ const Users = () => {
     deleteUserMutation.mutate(selectedUser._id);
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) {
+    console.log('⏳ Loading users...');
+    return <LoadingSpinner />;
+  }
 
-  const users = usersData?.data?.users || [];
+  // Kiểm tra quyền admin
+  if (!isAdmin) {
+    return (
+      <Box>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>
+          Quản lý người dùng
+        </Typography>
+        <Card>
+          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" color="error" sx={{ mb: 2 }}>
+              Không có quyền truy cập
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              Chỉ quản trị viên mới có thể truy cập trang này.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Liên hệ quản trị viên để được cấp quyền truy cập.
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
+
+  console.log('📊 Users data:', { usersData, usersLength: users.length });
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
-          Quản lý người dùng
+          Quản lý người dùng ({users.length} người dùng)
         </Typography>
-        {isAdmin && (
+        <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              // Implement create user functionality
-              toast.info('Chức năng tạo người dùng đang được phát triển');
-            }}
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => refetch()}
+            disabled={isLoading}
           >
-            Thêm người dùng
+            Làm mới
           </Button>
-        )}
+          {isAdmin && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/users/create')}
+            >
+              Thêm người dùng
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Search and Filter */}
@@ -254,30 +306,67 @@ const Users = () => {
         </CardContent>
       </Card>
 
-      {/* Users List */}
-      {users.length > 0 ? (
-        <Box>
-          {users.map((user) => (
-            <UserCard
-              key={user._id}
-              user={user}
-              onMenuClick={handleMenuClick}
-            />
-          ))}
-        </Box>
-      ) : (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
-              Không tìm thấy người dùng nào
+
+      {/* Error Display */}
+      {error && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography color="error" variant="h6" sx={{ mb: 1 }}>
+              Lỗi tải dữ liệu
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Hãy thử thay đổi bộ lọc hoặc thêm người dùng mới
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              {error.response?.status === 403 
+                ? 'Bạn không có quyền truy cập trang này. Chỉ quản trị viên mới có thể xem danh sách người dùng.'
+                : error.response?.status === 401
+                ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+                : error.message || 'Có lỗi xảy ra khi tải dữ liệu'}
             </Typography>
+            {error.response?.status === 403 && (
+              <Typography variant="body2" color="text.secondary">
+                Liên hệ quản trị viên để được cấp quyền truy cập.
+              </Typography>
+            )}
           </CardContent>
         </Card>
       )}
+
+      {/* Users List */}
+      {(() => {
+        console.log('🎨 Render Debug:', {
+          'users.length': users.length,
+          'users.length > 0': users.length > 0,
+          'users array': users,
+          'will render users list': users.length > 0,
+          'will render no users message': users.length === 0
+        });
+        
+        return users.length > 0 ? (
+          <Box>
+            {users.map((user) => (
+              <UserCard
+                key={user._id}
+                user={user}
+                onMenuClick={handleMenuClick}
+              />
+            ))}
+          </Box>
+        ) : (
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 4 }}>
+              <PersonIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">
+                Không tìm thấy người dùng nào
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Hãy thử thay đổi bộ lọc hoặc thêm người dùng mới
+              </Typography>
+              <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+                Debug: users.length = {users.length}
+              </Typography>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Context Menu */}
       <Menu
@@ -321,5 +410,7 @@ const Users = () => {
     </Box>
   );
 };
+
+console.log('📁 Users.js file loaded successfully');
 
 export default Users;

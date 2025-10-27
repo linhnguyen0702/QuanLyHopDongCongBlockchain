@@ -204,19 +204,6 @@ const Contractors = () => {
     }
   );
 
-  const suspendContractorMutation = useMutation(
-    (contractorId) => contractorAPI.suspendContractor(contractorId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('contractors');
-        toast.success('Tạm dừng nhà thầu thành công!');
-        handleMenuClose();
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Tạm dừng nhà thầu thất bại!');
-      },
-    }
-  );
 
   const handleMenuClick = (event, contractor) => {
     setAnchorEl(event.currentTarget);
@@ -251,13 +238,9 @@ const Contractors = () => {
     activateContractorMutation.mutate(selectedContractor._id);
   };
 
-  const handleSuspend = () => {
-    suspendContractorMutation.mutate(selectedContractor._id);
-  };
-
   if (isLoading) return <LoadingSpinner />;
 
-  const contractors = contractorsData?.data?.contractors || [];
+  const contractors = contractorsData?.data?.data?.contractors || [];
 
   return (
     <Box>
@@ -336,7 +319,6 @@ const Contractors = () => {
                 <option value="">Tất cả</option>
                 <option value="active">Hoạt động</option>
                 <option value="inactive">Không hoạt động</option>
-                <option value="suspended">Tạm dừng</option>
                 <option value="blacklisted">Cấm</option>
               </TextField>
             </Grid>
@@ -453,12 +435,6 @@ const Contractors = () => {
           <MenuItem onClick={handleActivate}>
             <CheckIcon sx={{ mr: 1 }} />
             Kích hoạt
-          </MenuItem>
-        )}
-        {isManager && selectedContractor?.status === 'active' && (
-          <MenuItem onClick={handleSuspend}>
-            <CheckIcon sx={{ mr: 1 }} />
-            Tạm dừng
           </MenuItem>
         )}
         {isManager && (

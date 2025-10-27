@@ -12,6 +12,7 @@ import {
   InputLabel,
   Select,
 } from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -96,16 +97,17 @@ const CreateContract = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
-            Tạo hợp đồng mới
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
           <Button
-            variant="outlined"
+            startIcon={<ArrowBackIcon />}
             onClick={() => navigate('/contracts')}
+            sx={{ mr: 2 }}
           >
             Quay lại
           </Button>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+            Tạo hợp đồng mới
+          </Typography>
         </Box>
 
         <Card>

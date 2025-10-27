@@ -16,7 +16,6 @@ import {
   TrendingUp as TrendingUpIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
 import { useQuery } from 'react-query';
@@ -75,18 +74,6 @@ const Reports = () => {
     }
   );
 
-  const { data: trendsData, isLoading: trendsLoading } = useQuery(
-    'contracts-trends',
-    () => reportAPI.getContractTrends({
-      period: 'month',
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate,
-    }),
-    {
-      enabled: isManager,
-    }
-  );
-
   const { data: expiringData, isLoading: expiringLoading } = useQuery(
     'contracts-expiring',
     () => reportAPI.getExpiringContracts({ days: 30 }),
@@ -116,14 +103,13 @@ const Reports = () => {
     );
   }
 
-  if (summaryLoading || trendsLoading || expiringLoading) {
+  if (summaryLoading || expiringLoading) {
     return <LoadingSpinner />;
   }
 
-  const summary = summaryData?.data?.summary || {};
-  const statusBreakdown = summaryData?.data?.statusBreakdown || [];
-  const trends = trendsData?.data?.trends || [];
-  const expiringContracts = expiringData?.data?.allContracts || [];
+  const summary = summaryData?.data?.data?.summary || {};
+  const statusBreakdown = summaryData?.data?.data?.statusBreakdown || [];
+  const expiringContracts = expiringData?.data?.data?.allContracts || [];
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {

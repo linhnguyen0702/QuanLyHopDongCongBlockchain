@@ -13,6 +13,8 @@ import ContractDetail from './pages/Contracts/ContractDetail';
 import CreateContract from './pages/Contracts/CreateContract';
 import EditContract from './pages/Contracts/EditContract';
 import Users from './pages/Users/Users';
+import CreateUser from './pages/Users/CreateUser';
+import EditUser from './pages/Users/EditUser';
 import Reports from './pages/Reports/Reports';
 import Profile from './pages/Profile/Profile';
 import Contractors from './pages/Contractors/Contractors';
@@ -127,6 +129,22 @@ function App() {
                       element={
                         <AdminRoute>
                           <Users />
+                        </AdminRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/users/create" 
+                      element={
+                        <AdminRoute>
+                          <CreateUser />
+                        </AdminRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/users/:id/edit" 
+                      element={
+                        <AdminRoute>
+                          <EditUser />
                         </AdminRoute>
                       } 
                     />

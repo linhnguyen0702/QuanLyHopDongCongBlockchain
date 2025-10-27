@@ -32,12 +32,26 @@ const schemas = {
     password: Joi.string().required()
   }),
 
+  createUser: Joi.object({
+    username: Joi.string().alphanum().min(3).max(30).required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+    fullName: Joi.string().min(2).max(100).required(),
+    role: Joi.string().valid('admin', 'manager', 'user').default('user'),
+    department: Joi.string().max(100).optional(),
+    phone: Joi.string().pattern(/^[0-9+\-\s()]+$/).optional(),
+    position: Joi.string().max(100).optional()
+  }),
+
   updateUser: Joi.object({
     username: Joi.string().alphanum().min(3).max(30).optional(),
     email: Joi.string().email().optional(),
     fullName: Joi.string().min(2).max(100).optional(),
     role: Joi.string().valid('admin', 'manager', 'user').optional(),
-    department: Joi.string().max(100).optional()
+    department: Joi.string().max(100).optional(),
+    phone: Joi.string().pattern(/^[0-9+\-\s()]+$/).optional(),
+    position: Joi.string().max(100).optional(),
+    isActive: Joi.boolean().optional()
   }),
 
   // Contract schemas

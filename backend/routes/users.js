@@ -5,6 +5,65 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
+// @route   POST /api/users
+// @desc    Create new user
+// @access  Private (Admin only)
+router.post('/', authenticateToken, requireAdmin, validate(schemas.createUser), async (req, res) => {
+  try {
+    const {
+      username,
+      email,
+      password,
+      fullName,
+      role = 'user',
+      department,
+      phone,
+      position
+    } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { username: username.toLowerCase() }
+      ]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email hoặc tên đăng nhập đã tồn tại'
+      });
+    }
+
+    // Create new user
+    const user = new User({
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
+      password,
+      fullName,
+      role,
+      department,
+      phone,
+      position
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Tạo người dùng thành công',
+      data: { user: user.profile }
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create user'
+    });
+  }
+});
+
 // @route   GET /api/users
 // @desc    Get all users with pagination
 // @access  Private (Admin only)

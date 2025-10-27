@@ -189,7 +189,7 @@ const Dashboard = () => {
     expiringContracts = 0,
     totalContractors = 0,
     performance = 0
-  } = dashboardData?.data || {};
+  } = dashboardData?.data?.data || {};
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('vi-VN', {

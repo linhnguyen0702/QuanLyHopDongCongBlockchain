@@ -19,15 +19,10 @@ import {
   ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
-  Person as PersonIcon,
-  Business as BusinessIcon,
-  AttachMoney as MoneyIcon,
-  CalendarToday as CalendarIcon,
 } from '@mui/icons-material';
 import { useQuery } from 'react-query';
 import { contractAPI } from '../../services/api';
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
-import { useAuth } from '../../contexts/AuthContext';
 
 const StatusChip = ({ status }) => {
   const getStatusColor = (status) => {
@@ -77,7 +72,6 @@ const StatusChip = ({ status }) => {
 const ContractDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isManager } = useAuth();
 
   const { data: contractData, isLoading, error } = useQuery(
     ['contract', id],
@@ -90,7 +84,7 @@ const ContractDetail = () => {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div>Error loading contract</div>;
 
-  const contract = contractData?.data?.contract;
+  const contract = contractData?.data?.data?.contract;
 
   if (!contract) {
     return <div>Contract not found</div>;

@@ -15,13 +15,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Paper,
   FormControl,
   InputLabel,
   Select,
@@ -33,12 +26,9 @@ import {
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
   FilterList as FilterIcon,
-  Description as ContractIcon,
   Person as PersonIcon,
-  AttachMoney as AttachMoneyIcon,
   Schedule as ScheduleIcon,
   Visibility as ViewIcon,
-  Comment as CommentIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { contractAPI } from '../../services/api';
@@ -53,6 +43,7 @@ const StatusChip = ({ status }) => {
       case 'approved': return 'success';
       case 'rejected': return 'error';
       case 'draft': return 'default';
+      case 'active': return 'info';
       default: return 'default';
     }
   };
@@ -63,6 +54,7 @@ const StatusChip = ({ status }) => {
       case 'approved': return 'Đã duyệt';
       case 'rejected': return 'Từ chối';
       case 'draft': return 'Nháp';
+      case 'active': return 'Đang hoạt động';
       default: return status;
     }
   };
@@ -134,7 +126,7 @@ const ContractCard = ({ contract, onMenuClick }) => {
 
 const Approval = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('pending');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedContract, setSelectedContract] = useState(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
@@ -146,12 +138,17 @@ const Approval = () => {
 
   const { data: contractsData, isLoading } = useQuery(
     ['contracts-approval', { search: searchTerm, status: statusFilter }],
-    () => contractAPI.getContracts({
-      search: searchTerm,
-      status: statusFilter,
-      page: 1,
-      limit: 50,
-    }),
+    () => {
+      const params = {
+        search: searchTerm,
+        page: 1,
+        limit: 50,
+      };
+      if (statusFilter && statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+      return contractAPI.getContracts(params);
+    },
     {
       keepPreviousData: true,
     }
@@ -251,7 +248,7 @@ const Approval = () => {
 
   if (isLoading) return <LoadingSpinner />;
 
-  const contracts = contractsData?.data?.contracts || [];
+  const contracts = contractsData?.data?.data?.contracts || [];
 
   return (
     <Box>
@@ -308,10 +305,10 @@ const Approval = () => {
                   label="Trạng thái"
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
+                  <MenuItem value="all">Tất cả</MenuItem>
                   <MenuItem value="pending">Chờ duyệt</MenuItem>
                   <MenuItem value="approved">Đã duyệt</MenuItem>
                   <MenuItem value="rejected">Từ chối</MenuItem>
-                  <MenuItem value="">Tất cả</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -322,7 +319,7 @@ const Approval = () => {
                 startIcon={<FilterIcon />}
                 onClick={() => {
                   setSearchTerm('');
-                  setStatusFilter('pending');
+                  setStatusFilter('all');
                 }}
               >
                 Xóa bộ lọc
@@ -334,7 +331,19 @@ const Approval = () => {
 
       {/* Statistics */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                {contracts.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Tất cả
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
@@ -346,7 +355,7 @@ const Approval = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
@@ -358,7 +367,7 @@ const Approval = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'error.main' }}>

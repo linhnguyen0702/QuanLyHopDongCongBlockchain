@@ -46,13 +46,26 @@ mongoose.connect(process.env.MONGODB_URI, {
 });
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://yourdomain.com'] 
     : ['http://localhost:3000'],
   credentials: true
 }));
+
+// Relax img-src CSP for local uploads in development
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== 'production') {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; base-uri 'self'; font-src 'self' https: data:; form-action 'self'; frame-ancestors 'self'; img-src 'self' data: http://localhost:5000; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' https: 'unsafe-inline'; upgrade-insecure-requests"
+    );
+  }
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -78,9 +91,16 @@ if (process.env.NODE_ENV === 'development') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static files - serve uploads directory
+// Static files - serve uploads directory with CORS headers
 const uploadsPath = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsPath));
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for static files
+  res.header('Access-Control-Allow-Origin', process.env.NODE_ENV === 'production' 
+    ? 'https://yourdomain.com' 
+    : 'http://localhost:3000');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+}, express.static(uploadsPath));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

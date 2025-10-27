@@ -13,8 +13,6 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Paper,
-  CircularProgress,
   Alert,
 } from '@mui/material';
 import {
@@ -51,7 +49,7 @@ const ContractorDetail = () => {
     () => contractorAPI.getContractor(id),
     {
       enabled: !!id,
-      select: (data) => data.data.contractor
+      select: (data) => data.data?.data?.contractor
     }
   );
 
@@ -96,13 +94,6 @@ const ContractorDetail = () => {
       case 'other': return 'Khác';
       default: return type;
     }
-  };
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(value);
   };
 
   const renderStars = (rating) => {

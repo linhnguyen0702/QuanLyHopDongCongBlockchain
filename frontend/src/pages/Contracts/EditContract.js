@@ -13,6 +13,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -51,16 +52,16 @@ const EditContract = () => {
   const formik = useFormik({
     enableReinitialize: true,
     initialValues: {
-      contractName: contractData?.data?.contract?.contractName || '',
-      contractor: contractData?.data?.contract?.contractor || '',
-      contractValue: contractData?.data?.contract?.contractValue || '',
-      currency: contractData?.data?.contract?.currency || 'VND',
-      startDate: contractData?.data?.contract?.startDate ? dayjs(contractData.data.contract.startDate) : null,
-      endDate: contractData?.data?.contract?.endDate ? dayjs(contractData.data.contract.endDate) : null,
-      description: contractData?.data?.contract?.description || '',
-      contractType: contractData?.data?.contract?.contractType || '',
-      department: contractData?.data?.contract?.department || '',
-      responsiblePerson: contractData?.data?.contract?.responsiblePerson || '',
+      contractName: contractData?.data?.data?.contract?.contractName || '',
+      contractor: contractData?.data?.data?.contract?.contractor || '',
+      contractValue: contractData?.data?.data?.contract?.contractValue || '',
+      currency: contractData?.data?.data?.contract?.currency || 'VND',
+      startDate: contractData?.data?.data?.contract?.startDate ? dayjs(contractData.data.data.contract.startDate) : null,
+      endDate: contractData?.data?.data?.contract?.endDate ? dayjs(contractData.data.data.contract.endDate) : null,
+      description: contractData?.data?.data?.contract?.description || '',
+      contractType: contractData?.data?.data?.contract?.contractType || '',
+      department: contractData?.data?.data?.contract?.department || '',
+      responsiblePerson: contractData?.data?.data?.contract?.responsiblePerson || '',
     },
     validationSchema: validationSchema,
     onSubmit: async (values) => {
@@ -91,7 +92,7 @@ const EditContract = () => {
 
   if (isLoading) return <LoadingSpinner />;
 
-  const contract = contractData?.data?.contract;
+  const contract = contractData?.data?.data?.contract;
   if (!contract) return <div>Contract not found</div>;
 
   const contractTypes = [
@@ -110,16 +111,17 @@ const EditContract = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
-            Chỉnh sửa hợp đồng
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
           <Button
-            variant="outlined"
-            onClick={() => navigate(`/contracts/${id}`)}
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate('/contracts')}
+            sx={{ mr: 2 }}
           >
             Quay lại
           </Button>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+            Chỉnh sửa hợp đồng
+          </Typography>
         </Box>
 
         <Card>

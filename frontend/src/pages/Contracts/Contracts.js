@@ -182,7 +182,7 @@ const Contracts = () => {
 
   if (isLoading) return <LoadingSpinner />;
 
-  const contracts = contractsData?.data?.contracts || [];
+  const contracts = contractsData?.data?.data?.contracts || [];
 
   return (
     <Box>
