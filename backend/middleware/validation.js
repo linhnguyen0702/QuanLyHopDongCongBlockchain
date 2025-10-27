@@ -74,7 +74,7 @@ const schemas = {
 
   // Contractor schemas
   createContractor: Joi.object({
-    contractorCode: Joi.string().required(),
+    contractorCode: Joi.string().uppercase().required(),
     contractorName: Joi.string().min(2).max(200).required(),
     contactPerson: Joi.string().min(2).max(100).required(),
     email: Joi.string().email().required(),
@@ -89,7 +89,7 @@ const schemas = {
   }),
 
   updateContractor: Joi.object({
-    contractorCode: Joi.string().optional(),
+    contractorCode: Joi.string().uppercase().optional(),
     contractorName: Joi.string().min(2).max(200).optional(),
     contactPerson: Joi.string().min(2).max(100).optional(),
     email: Joi.string().email().optional(),

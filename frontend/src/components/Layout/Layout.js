@@ -91,12 +91,52 @@ const Layout = ({ children }) => {
     return true;
   });
 
+  const actualDrawerWidth = collapsed ? 80 : drawerWidth;
+
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Logo Section */}
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box sx={{ p: collapsed ? 2 : 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {!collapsed && (
+          <Box 
+            onClick={() => navigate('/dashboard')}
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              '&:hover': {
+                opacity: 0.8,
+              }
+            }}
+          >
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                backgroundColor: 'primary.main',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 2,
+              }}
+            >
+              <ShieldIcon sx={{ color: 'white', fontSize: 24 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+                Quản lý HĐ
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                Blockchain System
+              </Typography>
+            </Box>
+          </Box>
+        )}
+        {collapsed && (
           <Box
+            onClick={() => navigate('/dashboard')}
             sx={{
               width: 40,
               height: 40,
@@ -105,71 +145,99 @@ const Layout = ({ children }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              mr: 2,
+              margin: '0 auto',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              '&:hover': {
+                opacity: 0.8,
+              }
             }}
           >
             <ShieldIcon sx={{ color: 'white', fontSize: 24 }} />
           </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-              Quản lý HĐ
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Blockchain System
-            </Typography>
-          </Box>
-        </Box>
+        )}
         <IconButton
           onClick={() => setCollapsed(!collapsed)}
           size="small"
-          sx={{ color: 'text.secondary' }}
+          sx={{ 
+            color: 'text.secondary',
+            display: collapsed ? 'none' : 'flex'
+          }}
         >
-          <ChevronLeftIcon sx={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+          <ChevronLeftIcon />
         </IconButton>
+        {collapsed && (
+          <IconButton
+            onClick={() => setCollapsed(!collapsed)}
+            size="small"
+            sx={{ color: 'text.secondary', position: 'absolute', right: 0, top: 8 }}
+          >
+            <ChevronLeftIcon sx={{ transform: 'rotate(180deg)' }} />
+          </IconButton>
+        )}
       </Box>
       
-      <Divider />
+      {!collapsed && <Divider />}
       
       {/* Menu Items */}
-      <List sx={{ flexGrow: 1, px: 1 }}>
-        {filteredMenuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                borderRadius: 2,
-                mx: 1,
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                  '& .MuiListItemIcon-root': {
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', mt: 1 }}>
+        <List sx={{ px: collapsed ? 0.5 : 1, py: 1 }}>
+          {filteredMenuItems.map((item) => (
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItemButton
+                selected={location.pathname === item.path}
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  borderRadius: 2,
+                  mx: collapsed ? 0.5 : 1,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  minHeight: 48,
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.main',
                     color: 'white',
+                    '&:hover': {
+                      backgroundColor: 'primary.dark',
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: 'white',
+                    },
                   },
-                },
-                '&:hover': {
-                  backgroundColor: 'action.hover',
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                {item.icon}
-              </ListItemIcon>
-              {!collapsed && <ListItemText primary={item.text} />}
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+                  '&:hover': {
+                    backgroundColor: 'action.hover',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center' }}>
+                  {item.icon}
+                </ListItemIcon>
+                {!collapsed && <ListItemText primary={item.text} sx={{ ml: 2 }} />}
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Box>
       
-      <Divider />
+      {!collapsed && <Divider />}
       
       {/* User Info */}
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', mr: 2 }}>
+      <Box sx={{ p: collapsed ? 1 : 2, mt: 'auto', cursor: 'pointer' }}>
+        <Box 
+          onClick={() => navigate('/profile')}
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            p: 1,
+            borderRadius: 2,
+            '&:hover': {
+              backgroundColor: 'action.hover',
+            },
+          }}
+        >
+          <Avatar 
+            src={user?.avatar ? `http://localhost:5000/${user.avatar}` : undefined}
+            sx={{ width: collapsed ? 40 : 32, height: collapsed ? 40 : 32, bgcolor: 'primary.main', mr: collapsed ? 0 : 2 }}
+          >
             {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
           </Avatar>
           {!collapsed && (
@@ -192,8 +260,8 @@ const Layout = ({ children }) => {
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${collapsed ? 80 : drawerWidth}px)` },
-          ml: { sm: `${collapsed ? 80 : drawerWidth}px` },
+          width: { sm: `calc(100% - ${actualDrawerWidth}px)` },
+          left: { sm: `${actualDrawerWidth}px` },
           backgroundColor: 'white',
           color: 'text.primary',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -264,7 +332,10 @@ const Layout = ({ children }) => {
                 onClick={handleProfileMenuOpen}
                 color="inherit"
               >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                <Avatar 
+                  src={user?.avatar ? `http://localhost:5000/${user.avatar}` : undefined}
+                  sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}
+                >
                   {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
                 </Avatar>
               </IconButton>
@@ -330,7 +401,11 @@ const Layout = ({ children }) => {
 
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ 
+          width: { sm: actualDrawerWidth }, 
+          flexShrink: { sm: 0 },
+          position: 'relative',
+        }}
         aria-label="mailbox folders"
       >
         <Drawer
@@ -351,7 +426,14 @@ const Layout = ({ children }) => {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': { 
+              boxSizing: 'border-box', 
+              width: actualDrawerWidth,
+              transition: 'width 0.3s ease',
+              border: 'none',
+              borderRight: '1px solid',
+              borderRightColor: 'divider',
+            },
           }}
           open
         >
@@ -363,11 +445,11 @@ const Layout = ({ children }) => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${collapsed ? 80 : drawerWidth}px)` },
-          ml: { sm: `${collapsed ? 80 : drawerWidth}px` },
+          width: { sm: `calc(100% - ${actualDrawerWidth}px)` },
           mt: 8,
           backgroundColor: 'grey.50',
           minHeight: 'calc(100vh - 64px)',
+          transition: 'width 0.3s ease, margin-left 0.3s ease',
         }}
       >
         {children}

@@ -107,9 +107,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // @access  Private (Manager/Admin only)
 router.post('/', authenticateToken, requireManager, validate(schemas.createContractor), async (req, res) => {
   try {
+    // Normalize contractor code to uppercase (consistent with model)
+    const contractorCode = req.body.contractorCode.toUpperCase();
+    
     // Check if contractor code already exists
     const existingContractor = await Contractor.findOne({ 
-      contractorCode: req.body.contractorCode 
+      contractorCode 
     });
 
     if (existingContractor) {
@@ -133,6 +136,7 @@ router.post('/', authenticateToken, requireManager, validate(schemas.createContr
 
     const contractor = new Contractor({
       ...req.body,
+      contractorCode,
       createdBy: req.user._id
     });
 
@@ -168,8 +172,11 @@ router.put('/:id', authenticateToken, requireManager, validate(schemas.updateCon
 
     // Check if contractor code already exists (excluding current contractor)
     if (req.body.contractorCode) {
+      // Normalize to uppercase
+      const contractorCode = req.body.contractorCode.toUpperCase();
+      
       const existingContractor = await Contractor.findOne({
-        contractorCode: req.body.contractorCode,
+        contractorCode,
         _id: { $ne: req.params.id }
       });
 
@@ -179,6 +186,9 @@ router.put('/:id', authenticateToken, requireManager, validate(schemas.updateCon
           message: 'Contractor code already exists'
         });
       }
+      
+      // Update the request body with normalized code
+      req.body.contractorCode = contractorCode;
     }
 
     // Check if tax code already exists (excluding current contractor)

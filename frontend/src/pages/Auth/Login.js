@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -10,6 +10,8 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -28,6 +30,25 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberPassword, setRememberPassword] = useState(false);
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedPassword = localStorage.getItem('rememberedPassword');
+    console.log('Loaded from localStorage:', { 
+      hasEmail: !!savedEmail, 
+      hasPassword: !!savedPassword 
+    });
+    if (savedEmail && savedPassword) {
+      setFormData({
+        email: savedEmail,
+        password: savedPassword,
+      });
+      setRememberPassword(true);
+      console.log('Restored credentials from localStorage');
+    }
+  }, []);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -45,9 +66,35 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password);
+    // Trim and validate inputs
+    const email = formData.email.trim();
+    const password = formData.password.trim();
+
+    if (!email || !password) {
+      setError('Vui lòng điền đầy đủ thông tin');
+      setLoading(false);
+      return;
+    }
+
+    console.log('Login attempt:', { 
+      email, 
+      passwordLength: password.length,
+      rememberPassword 
+    });
+
+    const result = await login(email, password);
     
     if (result.success) {
+      // Save credentials if "remember password" is checked
+      if (rememberPassword) {
+        localStorage.setItem('rememberedEmail', email);
+        localStorage.setItem('rememberedPassword', password);
+        console.log('Credentials saved to localStorage');
+      } else {
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('rememberedPassword');
+        console.log('Credentials cleared from localStorage');
+      }
       navigate('/dashboard');
     } else {
       setError(result.error);
@@ -139,8 +186,21 @@ const Login = () => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{ mb: 3 }}
+                sx={{ mb: 2 }}
               />
+
+              <Box sx={{ mb: 2 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberPassword}
+                      onChange={(e) => setRememberPassword(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Nhớ mật khẩu"
+                />
+              </Box>
 
               <Button
                 type="submit"
@@ -161,9 +221,6 @@ const Login = () => {
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Demo Account: admin@example.com / password123
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 Chưa có tài khoản? Liên hệ admin để được tạo tài khoản
               </Typography>
             </Box>

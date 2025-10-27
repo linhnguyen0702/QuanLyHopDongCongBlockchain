@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const User = require('../models/User');
 const { validate, schemas } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
@@ -9,9 +10,15 @@ const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
 // Configure multer for avatar upload
+const uploadDir = path.join(__dirname, '../uploads/avatars/');
+// Ensure upload directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/avatars/');
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -165,12 +172,41 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/profile
+// @desc    Get user profile (with latest data from DB)
+// @access  Private
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    // Fetch user from DB to get latest data including phone, position
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+    
+    res.json({
+      status: 'success',
+      data: {
+        user: user.profile
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get user profile'
+    });
+  }
+});
+
 // @route   PUT /api/auth/profile
 // @desc    Update user profile
 // @access  Private
 router.put('/profile', authenticateToken, validate(schemas.updateProfile), async (req, res) => {
   try {
-    const allowedUpdates = ['username', 'email', 'fullName', 'department'];
+    const allowedUpdates = ['username', 'email', 'fullName', 'phone', 'department', 'position'];
     const updates = {};
 
     // Only allow certain fields to be updated
@@ -203,6 +239,8 @@ router.put('/profile', authenticateToken, validate(schemas.updateProfile), async
       updates,
       { new: true, runValidators: true }
     );
+
+    console.log('Updated user:', user.toObject());
 
     res.json({
       status: 'success',
@@ -279,9 +317,12 @@ router.post('/upload-avatar', authenticateToken, upload.single('avatar'), async 
       });
     }
 
+    // Store relative path for frontend access
+    const relativePath = path.join('uploads', 'avatars', req.file.filename).replace(/\\/g, '/');
+    
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { avatar: req.file.path },
+      { avatar: relativePath },
       { new: true }
     );
 
@@ -290,7 +331,7 @@ router.post('/upload-avatar', authenticateToken, upload.single('avatar'), async 
       message: 'Avatar uploaded successfully',
       data: {
         user: user.profile,
-        avatar: req.file.path
+        avatar: relativePath
       }
     });
   } catch (error) {

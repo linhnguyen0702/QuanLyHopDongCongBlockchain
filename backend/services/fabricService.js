@@ -160,6 +160,26 @@ class FabricService {
     }
   }
 
+  async rejectContract(contractData) {
+    try {
+      if (!this.contract) {
+        throw new Error('Fabric service not initialized');
+      }
+
+      await this.contract.submitTransaction(
+        'RejectContract',
+        contractData.blockchainId,
+        contractData.rejectedBy?.toString() || contractData.createdBy.toString(),
+        new Date().toISOString()
+      );
+
+      console.log(`Contract ${contractData.blockchainId} rejected on blockchain`);
+    } catch (error) {
+      console.error('Error rejecting contract on blockchain:', error);
+      throw error;
+    }
+  }
+
   async getContract(contractId) {
     try {
       if (!this.contract) {

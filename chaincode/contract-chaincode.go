@@ -281,6 +281,60 @@ func (s *ContractChaincode) ActivateContract(ctx contractapi.TransactionContextI
 	return nil
 }
 
+// RejectContract rejects a contract
+func (s *ContractChaincode) RejectContract(ctx contractapi.TransactionContextInterface, contractID string, rejectedBy string, rejectedAt string) error {
+	// Get existing contract
+	contractBytes, err := ctx.GetStub().GetState(contractID)
+	if err != nil {
+		return fmt.Errorf("failed to read contract from world state: %v", err)
+	}
+	if contractBytes == nil {
+		return fmt.Errorf("contract %s does not exist", contractID)
+	}
+
+	var contract Contract
+	err = json.Unmarshal(contractBytes, &contract)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal contract: %v", err)
+	}
+
+	// Update contract status
+	contract.Status = "rejected"
+	contract.UpdatedAt = time.Now().Format(time.RFC3339)
+
+	// Add rejection to history
+	contract.History = append(contract.History, History{
+		Action:      "rejected",
+		PerformedBy: rejectedBy,
+		PerformedAt: rejectedAt,
+		Comment:     "Contract rejected",
+	})
+
+	// Store updated contract
+	updatedContractBytes, err := json.Marshal(contract)
+	if err != nil {
+		return fmt.Errorf("failed to marshal rejected contract: %v", err)
+	}
+
+	err = ctx.GetStub().PutState(contractID, updatedContractBytes)
+	if err != nil {
+		return fmt.Errorf("failed to put rejected contract to world state: %v", err)
+	}
+
+	// Update composite key
+	contractKey, err := ctx.GetStub().CreateCompositeKey("contract", []string{contract.Status, contract.ID})
+	if err != nil {
+		return fmt.Errorf("failed to create composite key: %v", err)
+	}
+
+	err = ctx.GetStub().PutState(contractKey, updatedContractBytes)
+	if err != nil {
+		return fmt.Errorf("failed to put contract composite key: %v", err)
+	}
+
+	return nil
+}
+
 // GetContract retrieves a contract by ID
 func (s *ContractChaincode) GetContract(ctx contractapi.TransactionContextInterface, contractID string) (*Contract, error) {
 	contractBytes, err := ctx.GetStub().GetState(contractID)

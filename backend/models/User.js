@@ -38,6 +38,15 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Department name cannot exceed 100 characters']
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  position: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Position name cannot exceed 100 characters']
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -46,6 +55,9 @@ const userSchema = new mongoose.Schema({
     type: Date
   },
   profileImage: {
+    type: String
+  },
+  avatar: {
     type: String
   }
 }, {
@@ -69,9 +81,12 @@ userSchema.virtual('profile').get(function() {
     fullName: this.fullName,
     role: this.role,
     department: this.department,
+    phone: this.phone,
+    position: this.position,
     isActive: this.isActive,
     lastLogin: this.lastLogin,
     profileImage: this.profileImage,
+    avatar: this.avatar,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt
   };

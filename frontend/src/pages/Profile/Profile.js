@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -19,7 +19,6 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Paper,
   Tab,
   Tabs,
   CircularProgress,
@@ -45,9 +44,7 @@ import { profileAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange }) => {
-  const [avatarFile, setAvatarFile] = useState(null);
-
+const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange, onChange, avatarPreview, isUploading }) => {
   const handleAvatarClick = () => {
     document.getElementById('avatar-upload').click();
   };
@@ -55,7 +52,6 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
   const handleAvatarChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setAvatarFile(file);
       onAvatarChange(file);
     }
   };
@@ -63,50 +59,72 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
   return (
     <Card>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, mb: 3 }}>
           <Box sx={{ position: 'relative' }}>
             <Avatar
-              src={user?.avatar ? `/uploads/avatars/${user.avatar.split('/').pop()}` : undefined}
+              src={avatarPreview || (user?.avatar ? `${user.avatar}` : undefined)}
               sx={{ width: 120, height: 120, fontSize: '3rem' }}
             >
               {user?.fullName?.charAt(0) || user?.username?.charAt(0) || 'U'}
             </Avatar>
-            <IconButton
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                bgcolor: 'primary.main',
-                color: 'white',
-                '&:hover': { bgcolor: 'primary.dark' }
-              }}
-              onClick={handleAvatarClick}
-            >
-              <CameraIcon />
-            </IconButton>
-            <input
-              id="avatar-upload"
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleAvatarChange}
-            />
+            {isUploading && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'rgba(0,0,0,0.5)',
+                  borderRadius: '50%'
+                }}
+              >
+                <CircularProgress size={40} sx={{ color: 'white' }} />
+              </Box>
+            )}
+            {isEditing && !isUploading && (
+              <IconButton
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'primary.dark' }
+                }}
+                onClick={handleAvatarClick}
+              >
+                <CameraIcon />
+              </IconButton>
+            )}
+            {isEditing && (
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleAvatarChange}
+              />
+            )}
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
               {user?.fullName || 'Chưa cập nhật'}
             </Typography>
-            <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
               @{user?.username}
             </Typography>
-            <Chip
-              label={user?.role === 'admin' ? 'Quản trị viên' : 
-                     user?.role === 'manager' ? 'Quản lý' : 'Người dùng'}
-              color={user?.role === 'admin' ? 'error' : 
-                     user?.role === 'manager' ? 'warning' : 'primary'}
-              sx={{ mb: 2 }}
-            />
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Chip
+                label={user?.role === 'admin' ? 'Quản trị viên' : 
+                       user?.role === 'manager' ? 'Quản lý' : 'Người dùng'}
+                color={user?.role === 'admin' ? 'error' : 
+                       user?.role === 'manager' ? 'warning' : 'primary'}
+                sx={{ fontSize: '0.875rem', height: '28px' }}
+              />
               {!isEditing ? (
                 <Button
                   variant="contained"
@@ -116,7 +134,7 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
                   Chỉnh sửa
                 </Button>
               ) : (
-                <>
+                <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     variant="contained"
                     startIcon={<SaveIcon />}
@@ -132,7 +150,7 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
                   >
                     Hủy
                   </Button>
-                </>
+                </Box>
               )}
             </Box>
           </Box>
@@ -145,6 +163,7 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
               label="Họ và tên"
               value={user?.fullName || ''}
               disabled={!isEditing}
+              onChange={(e) => onChange && onChange({ fullName: e.target.value })}
               InputProps={{
                 startAdornment: <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
@@ -167,6 +186,7 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
               label="Email"
               value={user?.email || ''}
               disabled={!isEditing}
+              onChange={(e) => onChange && onChange({ email: e.target.value })}
               InputProps={{
                 startAdornment: <EmailIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
@@ -178,6 +198,7 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
               label="Số điện thoại"
               value={user?.phone || ''}
               disabled={!isEditing}
+              onChange={(e) => onChange && onChange({ phone: e.target.value })}
               InputProps={{
                 startAdornment: <PhoneIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
@@ -189,6 +210,7 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
               label="Phòng ban"
               value={user?.department || ''}
               disabled={!isEditing}
+              onChange={(e) => onChange && onChange({ department: e.target.value })}
               InputProps={{
                 startAdornment: <BusinessIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
@@ -198,8 +220,9 @@ const ProfileTab = ({ user, onEdit, isEditing, onSave, onCancel, onAvatarChange 
             <TextField
               fullWidth
               label="Chức vụ"
-              value={user?.position || ''}
-              disabled={!isEditing}
+              value={user?.role === 'admin' ? 'Quản trị viên' : 
+                     user?.role === 'manager' ? 'Quản lý' : 'Người dùng'}
+              disabled
               InputProps={{
                 startAdornment: <BusinessIcon sx={{ mr: 1, color: 'text.secondary' }} />
               }}
@@ -289,6 +312,7 @@ const Profile = () => {
   const [tabValue, setTabValue] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({});
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const [changePasswordDialog, setChangePasswordDialog] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -296,17 +320,19 @@ const Profile = () => {
     confirmPassword: ''
   });
 
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch profile data
-  const { data: profileResponse, isLoading: profileLoading } = useQuery(
+  // Fetch profile data - transform ở component level để cache được update đúng
+  const { data: profileResponseRaw, isLoading: profileLoading } = useQuery(
     'profile',
     profileAPI.getProfile,
     {
-      select: (data) => data.data.user
+      refetchOnWindowFocus: false
     }
   );
+  
+  const profileResponse = profileResponseRaw?.data?.user;
 
   // Fetch activity log
   const { data: activityResponse, isLoading: activityLoading } = useQuery(
@@ -321,14 +347,26 @@ const Profile = () => {
   const updateProfileMutation = useMutation(
     (data) => profileAPI.updateProfile(data),
     {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries('profile');
-        queryClient.invalidateQueries('user');
-        toast.success('Cập nhật thông tin thành công!');
+      onSuccess: async (response) => {
+        // Update AuthContext user immediately to update UI in real-time
+        if (response?.data?.data?.user && setUser) {
+          setUser(response.data.data.user);
+        }
+        
+        // Refetch profile data để đảm bảo UI hiển thị đúng
+        await queryClient.refetchQueries('profile');
+        
+        // Invalidate và refetch user queries
+        await queryClient.invalidateQueries('user');
+        
+        setProfileData({});
         setIsEditing(false);
+        toast.success('Cập nhật thông tin thành công!');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Cập nhật thất bại!');
+        console.error('Update profile error:', error);
+        const errorMessage = error.response?.data?.details?.join(', ') || error.response?.data?.message || 'Cập nhật thất bại!';
+        toast.error(errorMessage);
       }
     }
   );
@@ -341,8 +379,18 @@ const Profile = () => {
       return profileAPI.uploadAvatar(formData);
     },
     {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries('profile');
+      onSuccess: async (response) => {
+        // Clear preview after successful upload
+        setAvatarPreview(null);
+        
+        // Update AuthContext user immediately to update UI in real-time
+        if (response?.data?.data?.user && setUser) {
+          setUser(response.data.data.user);
+        }
+        
+        // Refetch profile data to ensure UI shows latest avatar
+        await queryClient.refetchQueries('profile');
+        
         queryClient.invalidateQueries('user');
         toast.success('Cập nhật ảnh đại diện thành công!');
       },
@@ -367,16 +415,30 @@ const Profile = () => {
     }
   );
 
-  const currentUser = profileResponse || user;
+  // Use profileResponse từ query thay vì fallback sang user
+  // để đảm bảo luôn dùng dữ liệu mới nhất từ cache
+  // Include profileData khi đang edit để hiển thị giá trị đang sửa
+  // Dùng useMemo để đảm bảo re-compute khi data thay đổi
+  const currentUser = useMemo(() => {
+    if (isEditing && profileData && Object.keys(profileData).length > 0) {
+      return { ...profileResponse, ...profileData };
+    }
+    return profileResponse || user;
+  }, [profileResponse, profileData, isEditing, user]);
 
   const handleEdit = () => {
+    // Save the current avatar URL to keep it displayed in edit mode
+    const avatarUrl = currentUser?.avatar || currentUser?.profileImage;
+    
     setProfileData({
       fullName: currentUser?.fullName || '',
       email: currentUser?.email || '',
       phone: currentUser?.phone || '',
       department: currentUser?.department || '',
-      position: currentUser?.position || ''
+      role: currentUser?.role || 'user', // Preserve role
+      avatar: avatarUrl // Preserve avatar
     });
+    setAvatarPreview(avatarUrl);
     setIsEditing(true);
   };
 
@@ -387,9 +449,24 @@ const Profile = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setProfileData({});
+    setAvatarPreview(null);
+  };
+
+  const handleProfileChange = (data) => {
+    setProfileData(prev => ({ ...prev, ...data }));
   };
 
   const handleAvatarChange = (file) => {
+    // Create preview immediately
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    // Upload the file
     uploadAvatarMutation.mutate(file);
   };
 
@@ -430,12 +507,15 @@ const Profile = () => {
 
       {tabValue === 0 && (
         <ProfileTab
-          user={isEditing ? { ...currentUser, ...profileData } : currentUser}
+          user={currentUser}
           onEdit={handleEdit}
           isEditing={isEditing}
           onSave={handleSave}
           onCancel={handleCancel}
           onAvatarChange={handleAvatarChange}
+          onChange={handleProfileChange}
+          avatarPreview={avatarPreview}
+          isUploading={uploadAvatarMutation.isLoading}
         />
       )}
 

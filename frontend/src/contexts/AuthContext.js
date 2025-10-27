@@ -41,6 +41,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true);
+      console.log('Login request:', { email, passwordLength: password.length });
+      
       const response = await authAPI.login(email, password);
       console.log('Login response:', response.data);
       
@@ -53,7 +55,19 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      const message = error.response?.data?.message || 'Đăng nhập thất bại';
+      console.error('Error response:', error.response?.data);
+      
+      let message = 'Đăng nhập thất bại';
+      if (error.response?.data) {
+        if (error.response.data.details && Array.isArray(error.response.data.details)) {
+          message = error.response.data.details.join(', ');
+        } else if (error.response.data.message) {
+          message = error.response.data.message;
+        } else if (error.response.data.error) {
+          message = error.response.data.error;
+        }
+      }
+      
       toast.error(message);
       return { success: false, error: message };
     } finally {
@@ -94,6 +108,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    setUser,
     loading,
     login,
     logout,

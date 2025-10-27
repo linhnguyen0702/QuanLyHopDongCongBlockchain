@@ -158,7 +158,28 @@ const Dashboard = () => {
   );
 
   if (isLoading) return <LoadingSpinner />;
-  if (error) return <div>Error loading dashboard data</div>;
+  if (error) {
+    console.error('Dashboard error:', error);
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Lỗi tải dữ liệu dashboard
+          </Typography>
+          <Typography variant="body2">
+            {error.response?.data?.message || error.message || 'Không thể tải dữ liệu dashboard'}
+          </Typography>
+          <Button 
+            variant="contained" 
+            onClick={() => window.location.reload()} 
+            sx={{ mt: 2 }}
+          >
+            Tải lại trang
+          </Button>
+        </Alert>
+      </Box>
+    );
+  }
 
   const { 
     totalContracts = 0, 

@@ -1,5 +1,6 @@
 const express = require('express');
 const Contract = require('../models/Contract');
+const Contractor = require('../models/Contractor');
 const User = require('../models/User');
 const { authenticateToken, requireManager } = require('../middleware/auth');
 
@@ -279,16 +280,8 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     const totalContracts = await Contract.countDocuments();
     const totalUsers = await User.countDocuments({ isActive: true });
     
-    // Get unique contractors count
-    const contractorStats = await Contract.aggregate([
-      {
-        $group: {
-          _id: '$contractor',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-    const totalContractors = contractorStats.length;
+    // Get contractors count from Contractor model
+    const totalContractors = await Contractor.countDocuments();
     
     // Get contract value statistics
     const valueStats = await Contract.aggregate([
@@ -314,15 +307,16 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     const totalCompleted = performanceStats.find(stat => stat._id === 'completed')?.count || 0;
     const performance = totalContracts > 0 ? Math.round((totalCompleted / totalContracts) * 100) : 0;
 
-    // Get recent contracts
+    // Get recent contracts - simplified without populate to avoid errors
     const recentContracts = await Contract.find()
-      .populate('createdBy', 'username fullName')
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('contractNumber contractName contractor contractValue status createdAt');
+      .select('contractNumber contractName contractor contractValue status createdAt')
+      .lean(); // Use lean() to get plain objects
 
     // Get expiring contracts (next 30 days)
     const expiringContracts = await Contract.findExpiring(30);
+    const expiringCount = expiringContracts ? expiringContracts.length : 0;
 
     // Get status breakdown
     const statusBreakdown = await Contract.aggregate([
@@ -343,8 +337,8 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
         totalValue: valueStats[0]?.totalValue || 0,
         avgValue: valueStats[0]?.avgValue || 0,
         performance,
-        recentContracts,
-        expiringContracts: expiringContracts.length,
+        recentContracts: recentContracts || [],
+        expiringContracts: expiringCount,
         statusBreakdown
       }
     });
@@ -352,7 +346,8 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     console.error('Get dashboard data error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to fetch dashboard data'
+      message: 'Failed to fetch dashboard data',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

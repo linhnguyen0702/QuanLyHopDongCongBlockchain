@@ -118,14 +118,14 @@ router.post('/', authenticateToken, validate(schemas.createContract), async (req
     const contract = new Contract(contractData);
     await contract.save();
 
-    // Add to blockchain (temporarily disabled)
+    // Add to blockchain
     try {
-      // const blockchainId = await fabricService.createContract(contract);
-      // contract.blockchainId = blockchainId;
-      // await contract.save();
-      console.log('Blockchain integration temporarily disabled');
+      const blockchainId = await fabricService.createContract(contract);
+      contract.blockchainId = blockchainId;
+      await contract.save();
+      console.log(`✅ Contract added to blockchain with ID: ${blockchainId}`);
     } catch (blockchainError) {
-      console.error('Blockchain error:', blockchainError);
+      console.warn('⚠️ Blockchain error (continuing without blockchain):', blockchainError.message);
       // Continue without blockchain for now
     }
 
@@ -202,8 +202,9 @@ router.put('/:id', authenticateToken, validate(schemas.updateContract), async (r
     if (updatedContract.blockchainId) {
       try {
         await fabricService.updateContract(updatedContract);
+        console.log(`✅ Contract ${updatedContract.blockchainId} updated on blockchain`);
       } catch (blockchainError) {
-        console.error('Blockchain update error:', blockchainError);
+        console.warn('⚠️ Blockchain update error:', blockchainError.message);
       }
     }
 
@@ -258,8 +259,9 @@ router.post('/:id/approve', authenticateToken, requireManager, async (req, res) 
     if (contract.blockchainId) {
       try {
         await fabricService.approveContract(contract);
+        console.log(`✅ Contract ${contract.blockchainId} approved on blockchain`);
       } catch (blockchainError) {
-        console.error('Blockchain approval error:', blockchainError);
+        console.warn('⚠️ Blockchain approval error:', blockchainError.message);
       }
     }
 
@@ -316,8 +318,9 @@ router.post('/:id/reject', authenticateToken, requireManager, async (req, res) =
     if (contract.blockchainId) {
       try {
         await fabricService.rejectContract(contract);
+        console.log(`✅ Contract ${contract.blockchainId} rejected on blockchain`);
       } catch (blockchainError) {
-        console.error('Blockchain rejection error:', blockchainError);
+        console.warn('⚠️ Blockchain rejection error:', blockchainError.message);
       }
     }
 
@@ -371,8 +374,9 @@ router.post('/:id/activate', authenticateToken, requireManager, async (req, res)
     if (contract.blockchainId) {
       try {
         await fabricService.activateContract(contract);
+        console.log(`✅ Contract ${contract.blockchainId} activated on blockchain`);
       } catch (blockchainError) {
-        console.error('Blockchain activation error:', blockchainError);
+        console.warn('⚠️ Blockchain activation error:', blockchainError.message);
       }
     }
 
