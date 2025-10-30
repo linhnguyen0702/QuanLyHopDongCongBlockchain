@@ -1,4 +1,4 @@
-const { FabricCAServices, Wallets } = require('fabric-network');
+const { Wallets } = require('fabric-network');
 const FabricCAClient = require('fabric-ca-client');
 const fs = require('fs');
 const path = require('path');
@@ -28,11 +28,16 @@ async function enrollAdmin() {
       return;
     }
 
-    // Read CA certificate
-    const caCertPath = path.resolve(
-      __dirname, 
-      '../network/crypto-config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem'
+    // Resolve CA certificate: prefer dynamically generated CA server cert, fallback to crypto-config
+    const caCertPathPrimary = path.resolve(
+      __dirname,
+      '../../network/ca-server/ca-cert.pem'
     );
+    const caCertPathFallback = path.resolve(
+      __dirname,
+      '../../network/crypto-config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem'
+    );
+    const caCertPath = fs.existsSync(caCertPathPrimary) ? caCertPathPrimary : caCertPathFallback;
     
     if (!fs.existsSync(caCertPath)) {
       console.error('❌ CA certificate not found at:', caCertPath);
@@ -41,20 +46,15 @@ async function enrollAdmin() {
     }
 
     // Create a new CA client for interacting with the CA
-    const caInfo = {
-      caName: 'ca-org1',
-      url: 'https://localhost:7054',
-      tlsCACerts: {
-        path: caCertPath
-      }
-    };
-    
     console.log('📋 Creating CA client...');
-    const ca = new FabricCAServices(caInfo);
+    const tlsOptions = fs.existsSync(caCertPath)
+      ? { trustedRoots: [fs.readFileSync(caCertPath)], verify: false }
+      : { trustedRoots: [], verify: false };
+    const caClient = new FabricCAClient('https://localhost:7054', tlsOptions, 'ca-org1');
 
     // Enroll the admin user
     console.log('🔐 Enrolling admin user...');
-    const enrollment = await ca.enroll({
+    const enrollment = await caClient.enroll({
       enrollmentID: 'admin',
       enrollmentSecret: 'adminpw'
     });
@@ -76,14 +76,10 @@ async function enrollAdmin() {
 
     // Create appUser identity using admin identity
     console.log('👤 Registering appUser...');
-    const adminUser = await wallet.get('admin');
-    
-    // Create new CA client for registration
-    const caClient = new FabricCAClient('https://localhost:7054', {
-      tlsCACerts: {
-        path: caCertPath
-      }
-    }, 'ca-org1');
+    const adminIdentity = await wallet.get('admin');
+    const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+    const adminUser = await provider.getUserContext(adminIdentity, 'admin');
+    // Reuse the same CA client for registration
 
     // Register appUser
     const registerRequest = {

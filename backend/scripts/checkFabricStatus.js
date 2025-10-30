@@ -1,42 +1,45 @@
-const docker = require('docker-cli-js');
-const Docker = require('dockerode');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 async function checkFabricStatus() {
   console.log('🔍 Checking Hyperledger Fabric Status...\n');
 
-  const requiredContainers = [
-    'orderer.example.com',
-    'peer0.org1.example.com',
-    'ca_peerOrg1',
-    'cli'
+  // Accept either container_name or service name for CA to avoid false negatives on Windows
+  const containerAliases = [
+    ['orderer.example.com'],
+    ['peer0.org1.example.com'],
+    ['ca_peerOrg1', 'ca.org1.example.com'],
+    ['cli']
   ];
 
-  const docker = new Docker();
   let containersRunning = 0;
 
   try {
-    // Get all containers
-    const containers = await docker.listContainers({ all: true });
+    // Get running containers via docker CLI (no external deps)
+    let runningNames = [];
+    try {
+      const output = execSync('docker ps --format "{{.Names}}"', { stdio: ['pipe', 'pipe', 'ignore'] })
+        .toString();
+      runningNames = output
+        .split(/\r?\n/)
+        .map(name => name && name.trim().toLowerCase())
+        .filter(Boolean);
+    } catch (e) {
+      // If docker is not available or fails, keep runningNames empty
+    }
 
     console.log('📦 Fabric Containers Status:\n');
     console.log('───────────────────────────────────────');
     
-    for (const containerName of requiredContainers) {
-      const container = containers.find(c => c.Names && c.Names.includes(`/${containerName}`));
-      
-      if (container) {
-        const isRunning = container.State === 'running';
-        const status = isRunning ? '🟢 Running' : '🔴 Stopped';
-        console.log(`${status} - ${containerName}`);
-        
-        if (isRunning) {
-          containersRunning++;
-        }
-      } else {
-        console.log(`🔴 Not Found - ${containerName}`);
-      }
+    for (const aliases of containerAliases) {
+      const isRunning = aliases
+        .map(n => n.toLowerCase())
+        .some(name => runningNames.includes(name));
+      const label = aliases[0];
+      const status = isRunning ? '🟢 Running' : `🔴 Not Found`;
+      console.log(`${status} - ${label}`);
+      if (isRunning) containersRunning++;
     }
 
     console.log('───────────────────────────────────────\n');
@@ -70,7 +73,8 @@ async function checkFabricStatus() {
     console.log('───────────────────────────────────────');
     console.log(`${profileExists ? '✅' : '❌'} Connection Profile: ${profileExists ? 'Found' : 'Not Found'}`);
     
-    const cryptoConfigPath = path.join(__dirname, '../network/crypto-config');
+    // Point to root-level network/crypto-config (../../ from scripts directory)
+    const cryptoConfigPath = path.join(__dirname, '../../network/crypto-config');
     const cryptoExists = fs.existsSync(cryptoConfigPath);
     console.log(`${cryptoExists ? '✅' : '❌'} Crypto Config: ${cryptoExists ? 'Found' : 'Not Found'}`);
     
@@ -79,9 +83,9 @@ async function checkFabricStatus() {
     // Summary
     console.log('📊 Summary:');
     console.log('───────────────────────────────────────');
-    console.log(`Containers Running: ${containersRunning}/${requiredContainers.length}`);
+    console.log(`Containers Running: ${containersRunning}/${containerAliases.length}`);
     
-    if (containersRunning === requiredContainers.length) {
+    if (containersRunning === containerAliases.length) {
       console.log('✅ All Fabric containers are running!');
     } else if (containersRunning > 0) {
       console.log('⚠️  Some containers are not running');

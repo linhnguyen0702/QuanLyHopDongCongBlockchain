@@ -77,44 +77,51 @@ Bạn sẽ thấy 2 files trong thư mục `wallet/`:
 
 ## 📦 BƯỚC 3: Deploy Chaincode Lên Blockchain
 
-### 3.1. Vào CLI container
+### 3.1. Chạy script deploy chaincode
 ```bash
-cd ../network
-docker-compose exec cli bash
+cd network
+docker-compose exec cli bash ./scripts/deployChaincode.sh
 ```
 
-### 3.2. Set environment variables
+**Kết quả mong đợi:** Script sẽ tự động:
+- ✅ Package chaincode
+- ✅ Install chaincode trên peer
+- ✅ Approve chaincode definition
+- ✅ Commit chaincode lên channel
+
+### 3.2. Kiểm tra chaincode đã deploy
 ```bash
+# Vào CLI container để query
+docker-compose exec cli bash -c "peer chaincode query -C mychannel -n contract-chaincode -c '{\"function\":\"GetAllContracts\",\"Args\":[]}'"
+```
+
+**Kết quả:** `[]` (chưa có contract nào - đây là bình thường)
+
+### 3.3. (Tùy chọn) Deploy thủ công từng bước
+Nếu script gặp lỗi, bạn có thể deploy thủ công:
+
+```bash
+# Vào CLI container
+docker-compose exec cli bash
+
+# Set environment variables
 export FABRIC_CFG_PATH=/opt/gopath/src/github.com/hyperledger/fabric/peer
 export CC_NAME=contract-chaincode
 export CC_VERSION=1.0
 export CHANNEL_NAME=mychannel
-```
 
-### 3.3. Cài đặt chaincode
-```bash
-# Copy chaincode vào container
-cp -r /opt/gopath/src/github.com/chaincode/contract-chaincode.go /opt/gopath/src/
-
-# Package chaincode
+# Package và Install
+cp /opt/gopath/src/github.com/chaincode/contract-chaincode.go /opt/gopath/src/
 peer lifecycle chaincode package ${CC_NAME}.tar.gz \
   --path /opt/gopath/src \
   --lang golang \
   --label ${CC_NAME}_${CC_VERSION}
-
-# Install chaincode
 peer lifecycle chaincode install ${CC_NAME}.tar.gz
-```
 
-### 3.4. Approve & Commit chaincode
-```bash
-# Query package ID
+# Lấy Package ID và Approve
 peer lifecycle chaincode queryinstalled
+export PACKAGE_ID=<your-package-id>  # Copy từ kết quả trên
 
-# Copy Package ID từ kết quả trên (ví dụ: contract-chaincode_1.0:abc123...)
-export PACKAGE_ID=<your-package-id>
-
-# Approve
 peer lifecycle chaincode approveformyorg \
   -o orderer.example.com:7050 \
   --channelID ${CHANNEL_NAME} \
@@ -137,17 +144,6 @@ peer lifecycle chaincode commit \
   --peerAddresses peer0.org1.example.com:7051 \
   --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 ```
-
-### 3.5. Kiểm tra chaincode đã deploy
-```bash
-# Query chaincode
-peer chaincode query \
-  -C ${CHANNEL_NAME} \
-  -n ${CC_NAME} \
-  -c '{"function":"GetAllContracts","Args":[]}'
-```
-
-**Kết quả:** `[]` (chưa có contract nào)
 
 ## 🔧 BƯỚC 4: Khởi Động Backend Server
 
