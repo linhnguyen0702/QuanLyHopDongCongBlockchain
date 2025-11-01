@@ -2,7 +2,7 @@ const express = require('express');
 const Contract = require('../models/Contract');
 const { validate, schemas } = require('../middleware/validation');
 const { authenticateToken, requireManager } = require('../middleware/auth');
-const fabricService = require('../services/fabricService');
+
 
 const router = express.Router();
 
@@ -118,16 +118,7 @@ router.post('/', authenticateToken, validate(schemas.createContract), async (req
     const contract = new Contract(contractData);
     await contract.save();
 
-    // Add to blockchain
-    try {
-      const blockchainId = await fabricService.createContract(contract);
-      contract.blockchainId = blockchainId;
-      await contract.save();
-      console.log(`✅ Hợp đồng đã được thêm vào blockchain với ID: ${blockchainId}`);
-    } catch (blockchainError) {
-      console.warn('⚠️ Lỗi khi ghi hợp đồng lên blockchain (tiếp tục mà không đồng bộ blockchain):', blockchainError.message);
-      // Continue without blockchain for now
-    }
+
 
     await contract.populate('createdBy', 'username fullName email');
 
@@ -176,37 +167,35 @@ router.put('/:id', authenticateToken, validate(schemas.updateContract), async (r
       });
     }
 
-    // Don't allow updating certain fields if contract is approved
+    let updateData = { ...req.body };
+
+    // If contract is approved or active, only allow non-critical fields to be updated.
     if (contract.status === 'approved' || contract.status === 'active') {
-      const restrictedFields = ['contractValue', 'startDate', 'endDate', 'contractor'];
-      const hasRestrictedChanges = restrictedFields.some(field => 
-        req.body[field] !== undefined && req.body[field] !== contract[field]
-      );
-      
-      if (hasRestrictedChanges) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Không thể chỉnh sửa các trường quan trọng của hợp đồng đã được phê duyệt/đang hoạt động'
-        });
-      }
+      const allowedUpdates = {
+        contractName: req.body.contractName,
+        description: req.body.description,
+        department: req.body.department,
+        responsiblePerson: req.body.responsiblePerson,
+        // Add any other fields that are safe to update here
+      };
+      updateData = allowedUpdates;
     }
 
-    const updatedContract = await Contract.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('createdBy', 'username fullName email')
-     .populate('approvedBy', 'username fullName email');
+    // Find the contract first
+    const contractToUpdate = await Contract.findById(req.params.id);
 
-    // Update blockchain
-    if (updatedContract.blockchainId) {
-      try {
-        await fabricService.updateContract(updatedContract);
-        console.log(`✅ Hợp đồng ${updatedContract.blockchainId} đã được cập nhật trên blockchain`);
-      } catch (blockchainError) {
-        console.warn('⚠️ Lỗi khi cập nhật hợp đồng trên blockchain:', blockchainError.message);
-      }
-    }
+    // Apply the updates to the document
+    Object.assign(contractToUpdate, updateData);
+
+    // Save the document, which will run validators correctly
+    const savedContract = await contractToUpdate.save();
+
+    const updatedContract = await savedContract.populate([
+      { path: 'createdBy', select: 'username fullName email' },
+      { path: 'approvedBy', select: 'username fullName email' },
+    ]);
+
+
 
     res.json({
       status: 'success',
@@ -255,15 +244,7 @@ router.post('/:id/approve', authenticateToken, requireManager, async (req, res) 
 
     await contract.save();
 
-    // Update blockchain
-    if (contract.blockchainId) {
-      try {
-        await fabricService.approveContract(contract);
-        console.log(`✅ Hợp đồng ${contract.blockchainId} đã được phê duyệt trên blockchain`);
-      } catch (blockchainError) {
-        console.warn('⚠️ Lỗi khi phê duyệt hợp đồng trên blockchain:', blockchainError.message);
-      }
-    }
+
 
     await contract.populate('approvedBy', 'username fullName email');
 
@@ -314,15 +295,7 @@ router.post('/:id/reject', authenticateToken, requireManager, async (req, res) =
 
     await contract.save();
 
-    // Update blockchain
-    if (contract.blockchainId) {
-      try {
-        await fabricService.rejectContract(contract);
-        console.log(`✅ Hợp đồng ${contract.blockchainId} đã được từ chối trên blockchain`);
-      } catch (blockchainError) {
-        console.warn('⚠️ Lỗi khi từ chối hợp đồng trên blockchain:', blockchainError.message);
-      }
-    }
+
 
     await contract.populate('rejectedBy', 'username fullName email');
 
@@ -370,15 +343,7 @@ router.post('/:id/activate', authenticateToken, requireManager, async (req, res)
 
     await contract.save();
 
-    // Update blockchain
-    if (contract.blockchainId) {
-      try {
-        await fabricService.activateContract(contract);
-        console.log(`✅ Hợp đồng ${contract.blockchainId} đã được kích hoạt trên blockchain`);
-      } catch (blockchainError) {
-        console.warn('⚠️ Lỗi khi kích hoạt hợp đồng trên blockchain:', blockchainError.message);
-      }
-    }
+
 
     res.json({
       status: 'success',

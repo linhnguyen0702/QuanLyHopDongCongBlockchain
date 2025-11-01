@@ -99,11 +99,7 @@ const contractSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  blockchainId: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
+
   version: {
     type: Number,
     default: 1

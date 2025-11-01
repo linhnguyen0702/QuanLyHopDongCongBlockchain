@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Typography,
@@ -14,13 +14,10 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Alert,
-  Chip,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
-  Paper,
   CircularProgress,
 } from '@mui/material';
 import {
@@ -38,7 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { settingsAPI } from '../../services/api';
+import { settingsAPI, userAPI, contractAPI, reportAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const SettingSection = ({ title, icon, children }) => (
@@ -65,7 +62,7 @@ const SettingSection = ({ title, icon, children }) => (
 );
 
 const Settings = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
   // Fetch system settings
@@ -85,6 +82,24 @@ const Settings = () => {
     {
       enabled: isAdmin,
       select: (data) => data.data.systemInfo
+    }
+  );
+
+  // Fetch system stats (users and contracts)
+  const { data: systemStatsData } = useQuery(
+    'systemStats',
+    async () => {
+      const [userStatsRes, dashboardDataRes] = await Promise.all([
+        userAPI.getUserStats(),
+        reportAPI.getDashboardData(),
+      ]);
+      return {
+        totalUsers: dashboardDataRes.data.data.totalUsers || 0,
+        totalContracts: dashboardDataRes.data.data.totalContracts || 0,
+      };
+    },
+    {
+      enabled: isAdmin,
     }
   );
 
@@ -180,14 +195,14 @@ const Settings = () => {
     fromName: 'Contract Management System'
   };
 
-  const systemInfo = systemInfoData || {
-    systemVersion: 'v1.0.0',
-    databaseVersion: 'MongoDB 6.0',
-    nodeVersion: 'v18.20.3',
-    reactVersion: 'v18.2.0',
-    totalUsers: 0,
-    totalContracts: 0,
-    lastUpdated: new Date()
+  const systemInfo = {
+    systemVersion: systemInfoData?.systemVersion || 'v1.0.0',
+    databaseVersion: systemInfoData?.databaseVersion || 'MongoDB 6.0',
+    nodeVersion: systemInfoData?.nodeVersion || 'v18.20.3',
+    reactVersion: systemInfoData?.reactVersion || 'v18.2.0',
+    totalUsers: systemStatsData?.totalUsers || 0,
+    totalContracts: systemStatsData?.totalContracts || 0,
+    lastUpdated: systemInfoData?.lastUpdated || new Date()
   };
 
   const handleSettingChange = (key, value) => {
@@ -491,7 +506,7 @@ const Settings = () => {
                   control={
                     <Switch
                       checked={settings.maintenanceMode}
-                      onChange={(e) => handleSettingChange('maintenanceMode', e.target.checked)}
+                      onChange={(e) => handleSettingChange('maintenanceMode', e.g.target.checked)}
                     />
                   }
                   label="Chế độ bảo trì"

@@ -272,7 +272,7 @@ const Dashboard = () => {
               Danh sách các hợp đồng được tạo và cập nhật gần đây
             </Typography>
             {recentContracts && recentContracts.length > 0 ? (
-              recentContracts.map((contract, index) => (
+              recentContracts.slice(0, 4).map((contract, index) => (
                 <Box key={contract._id} sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'grey.200', borderRadius: 2 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Box>
