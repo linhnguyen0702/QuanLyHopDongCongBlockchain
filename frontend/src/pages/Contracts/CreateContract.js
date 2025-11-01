@@ -13,14 +13,15 @@ import {
   Select,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import Autocomplete from '@mui/material/Autocomplete';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
-import { useMutation, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient, useQuery } from 'react-query';
 import { useNavigate } from 'react-router-dom';
-import { contractAPI } from '../../services/api';
+import { contractAPI, contractorAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const validationSchema = yup.object({
@@ -38,6 +39,13 @@ const validationSchema = yup.object({
 const CreateContract = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Fetch danh sách nhà thầu (ưu tiên trạng thái active)
+  const { data: contractorsData, isLoading: contractorsLoading } = useQuery(
+    ['contractors', { status: 'active' }],
+    () => contractorAPI.getContractors({ status: 'active', page: 1, limit: 1000 }),
+    { keepPreviousData: true }
+  );
 
   const formik = useFormik({
     initialValues: {
@@ -57,10 +65,11 @@ const CreateContract = () => {
     onSubmit: async (values) => {
       const contractData = {
         ...values,
-        startDate: values.startDate.toISOString(),
-        endDate: values.endDate.toISOString(),
+        status: 'pending', // Gửi trạng thái 'pending' (Chờ phê duyệt)
+        startDate: values.startDate ? values.startDate.toISOString() : undefined,
+        endDate: values.endDate ? values.endDate.toISOString() : undefined,
       };
-      
+
       createContractMutation.mutate(contractData);
     },
   });
@@ -68,15 +77,17 @@ const CreateContract = () => {
   const createContractMutation = useMutation(
     (contractData) => contractAPI.createContract(contractData),
     {
-      onSuccess: (response) => {
+      onSuccess: (response, variables) => {
         console.log('Create contract response:', response.data);
         queryClient.invalidateQueries('contracts');
-        toast.success('Tạo hợp đồng thành công!');
+        const isDraft = variables.status === 'draft';
+        toast.success(isDraft ? 'Lưu bản nháp thành công!' : 'Tạo hợp đồng thành công!');
         navigate(`/contracts/${response.data.data.contract._id}`);
       },
-      onError: (error) => {
+      onError: (error, variables) => {
         console.error('Create contract error:', error);
-        toast.error(error.response?.data?.message || 'Tạo hợp đồng thất bại!');
+        const isDraft = variables.status === 'draft';
+        toast.error(error.response?.data?.message || (isDraft ? 'Lưu bản nháp thất bại!' : 'Tạo hợp đồng thất bại!'));
       },
     }
   );
@@ -93,6 +104,18 @@ const CreateContract = () => {
     { value: 'USD', label: 'USD' },
     { value: 'EUR', label: 'EUR' },
   ];
+
+  // Lưu bản nháp: không chạy validate bắt buộc, trạng thái = DRAFT
+  const handleSaveDraft = () => {
+    const values = formik.values;
+    const contractData = {
+      ...values,
+      status: 'draft',
+      startDate: values.startDate ? values.startDate.toISOString() : undefined,
+      endDate: values.endDate ? values.endDate.toISOString() : undefined,
+    };
+    createContractMutation.mutate(contractData);
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -142,14 +165,24 @@ const CreateContract = () => {
 
                 {/* Contractor */}
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Nhà thầu"
-                    name="contractor"
-                    value={formik.values.contractor}
-                    onChange={formik.handleChange}
-                    error={formik.touched.contractor && Boolean(formik.errors.contractor)}
-                    helperText={formik.touched.contractor && formik.errors.contractor}
+                  <Autocomplete
+                    options={(contractorsData?.data?.data?.contractors || []).filter(c => c.status === 'active')}
+                    getOptionLabel={(option) => option?.contractorName || ''}
+                    value={(contractorsData?.data?.data?.contractors || []).find(c => c.contractorName === formik.values.contractor) || null}
+                    onChange={(_, newValue) => {
+                      formik.setFieldValue('contractor', newValue ? newValue.contractorName : '');
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        label="Nhà thầu"
+                        error={formik.touched.contractor && Boolean(formik.errors.contractor)}
+                        helperText={formik.touched.contractor && formik.errors.contractor}
+                      />
+                    )}
+                    loading={contractorsLoading}
+                    noOptionsText={contractorsLoading ? 'Đang tải...' : 'Không có nhà thầu phù hợp'}
                   />
                 </Grid>
 
@@ -294,6 +327,13 @@ const CreateContract = () => {
                       onClick={() => navigate('/contracts')}
                     >
                       Hủy
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleSaveDraft}
+                      disabled={createContractMutation.isLoading}
+                    >
+                      {createContractMutation.isLoading ? 'Đang lưu...' : 'Lưu bản nháp'}
                     </Button>
                     <Button
                       type="submit"

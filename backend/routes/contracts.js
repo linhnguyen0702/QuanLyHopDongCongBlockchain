@@ -70,7 +70,7 @@ router.get('/', authenticateToken, validate(schemas.pagination), async (req, res
     console.error('Get contracts error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to fetch contracts'
+      message: 'Không thể tải danh sách hợp đồng'
     });
   }
 });
@@ -88,7 +88,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (!contract) {
       return res.status(404).json({
         status: 'error',
-        message: 'Contract not found'
+        message: 'Không tìm thấy hợp đồng'
       });
     }
 
@@ -100,7 +100,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     console.error('Get contract error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to fetch contract'
+      message: 'Không thể tải thông tin hợp đồng'
     });
   }
 });
@@ -123,9 +123,9 @@ router.post('/', authenticateToken, validate(schemas.createContract), async (req
       const blockchainId = await fabricService.createContract(contract);
       contract.blockchainId = blockchainId;
       await contract.save();
-      console.log(`✅ Contract added to blockchain with ID: ${blockchainId}`);
+      console.log(`✅ Hợp đồng đã được thêm vào blockchain với ID: ${blockchainId}`);
     } catch (blockchainError) {
-      console.warn('⚠️ Blockchain error (continuing without blockchain):', blockchainError.message);
+      console.warn('⚠️ Lỗi khi ghi hợp đồng lên blockchain (tiếp tục mà không đồng bộ blockchain):', blockchainError.message);
       // Continue without blockchain for now
     }
 
@@ -133,22 +133,22 @@ router.post('/', authenticateToken, validate(schemas.createContract), async (req
 
     res.status(201).json({
       status: 'success',
-      message: 'Contract created successfully',
+      message: 'Tạo hợp đồng thành công',
       data: { contract }
     });
   } catch (error) {
-    console.error('Create contract error:', error);
+    console.error('Lỗi khi tạo hợp đồng:', error);
     
     if (error.code === 11000) {
       return res.status(400).json({
         status: 'error',
-        message: 'Contract number already exists'
+        message: 'Số hợp đồng đã tồn tại'
       });
     }
 
     res.status(500).json({
       status: 'error',
-      message: 'Failed to create contract'
+      message: 'Không thể tạo hợp đồng'
     });
   }
 });
@@ -163,7 +163,7 @@ router.put('/:id', authenticateToken, validate(schemas.updateContract), async (r
     if (!contract) {
       return res.status(404).json({
         status: 'error',
-        message: 'Contract not found'
+        message: 'Không tìm thấy hợp đồng'
       });
     }
 
@@ -172,7 +172,7 @@ router.put('/:id', authenticateToken, validate(schemas.updateContract), async (r
         !['admin', 'manager'].includes(req.user.role)) {
       return res.status(403).json({
         status: 'error',
-        message: 'Not authorized to update this contract'
+        message: 'Không được phép cập nhật hợp đồng này'
       });
     }
 
@@ -186,7 +186,7 @@ router.put('/:id', authenticateToken, validate(schemas.updateContract), async (r
       if (hasRestrictedChanges) {
         return res.status(400).json({
           status: 'error',
-          message: 'Cannot modify critical fields of approved/active contracts'
+          message: 'Không thể chỉnh sửa các trường quan trọng của hợp đồng đã được phê duyệt/đang hoạt động'
         });
       }
     }
@@ -202,22 +202,22 @@ router.put('/:id', authenticateToken, validate(schemas.updateContract), async (r
     if (updatedContract.blockchainId) {
       try {
         await fabricService.updateContract(updatedContract);
-        console.log(`✅ Contract ${updatedContract.blockchainId} updated on blockchain`);
+        console.log(`✅ Hợp đồng ${updatedContract.blockchainId} đã được cập nhật trên blockchain`);
       } catch (blockchainError) {
-        console.warn('⚠️ Blockchain update error:', blockchainError.message);
+        console.warn('⚠️ Lỗi khi cập nhật hợp đồng trên blockchain:', blockchainError.message);
       }
     }
 
     res.json({
       status: 'success',
-      message: 'Contract updated successfully',
+      message: 'Cập nhật hợp đồng thành công',
       data: { contract: updatedContract }
     });
   } catch (error) {
-    console.error('Update contract error:', error);
+    console.error('Lỗi khi cập nhật hợp đồng:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to update contract'
+      message: 'Không thể cập nhật hợp đồng'
     });
   }
 });
@@ -232,14 +232,14 @@ router.post('/:id/approve', authenticateToken, requireManager, async (req, res) 
     if (!contract) {
       return res.status(404).json({
         status: 'error',
-        message: 'Contract not found'
+        message: 'Không tìm thấy hợp đồng'
       });
     }
 
     if (contract.status !== 'pending') {
       return res.status(400).json({
         status: 'error',
-        message: 'Only pending contracts can be approved'
+        message: 'Chỉ có hợp đồng chờ phê duyệt mới được phê duyệt'
       });
     }
 
@@ -250,7 +250,7 @@ router.post('/:id/approve', authenticateToken, requireManager, async (req, res) 
     contract.history.push({
       action: 'approved',
       performedBy: req.user._id,
-      comment: req.body.comment || 'Contract approved'
+      comment: req.body.comment || 'Hợp đồng đã được phê duyệt'
     });
 
     await contract.save();
@@ -259,9 +259,9 @@ router.post('/:id/approve', authenticateToken, requireManager, async (req, res) 
     if (contract.blockchainId) {
       try {
         await fabricService.approveContract(contract);
-        console.log(`✅ Contract ${contract.blockchainId} approved on blockchain`);
+        console.log(`✅ Hợp đồng ${contract.blockchainId} đã được phê duyệt trên blockchain`);
       } catch (blockchainError) {
-        console.warn('⚠️ Blockchain approval error:', blockchainError.message);
+        console.warn('⚠️ Lỗi khi phê duyệt hợp đồng trên blockchain:', blockchainError.message);
       }
     }
 
@@ -269,14 +269,14 @@ router.post('/:id/approve', authenticateToken, requireManager, async (req, res) 
 
     res.json({
       status: 'success',
-      message: 'Contract approved successfully',
+      message: 'Hợp đồng đã được phê duyệt thành công',
       data: { contract }
     });
   } catch (error) {
-    console.error('Approve contract error:', error);
+    console.error('Lỗi khi phê duyệt hợp đồng:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to approve contract'
+      message: 'Không thể phê duyệt hợp đồng'
     });
   }
 });
@@ -291,14 +291,14 @@ router.post('/:id/reject', authenticateToken, requireManager, async (req, res) =
     if (!contract) {
       return res.status(404).json({
         status: 'error',
-        message: 'Contract not found'
+        message: 'Không tìm thấy hợp đồng'
       });
     }
 
     if (contract.status !== 'pending') {
       return res.status(400).json({
         status: 'error',
-        message: 'Only pending contracts can be rejected'
+        message: 'Chỉ có hợp đồng chờ phê duyệt mới được từ chối'
       });
     }
 
@@ -309,7 +309,7 @@ router.post('/:id/reject', authenticateToken, requireManager, async (req, res) =
     contract.history.push({
       action: 'rejected',
       performedBy: req.user._id,
-      comment: req.body.comment || 'Contract rejected'
+      comment: req.body.comment || 'Hợp đồng đã được từ chối'
     });
 
     await contract.save();
@@ -318,9 +318,9 @@ router.post('/:id/reject', authenticateToken, requireManager, async (req, res) =
     if (contract.blockchainId) {
       try {
         await fabricService.rejectContract(contract);
-        console.log(`✅ Contract ${contract.blockchainId} rejected on blockchain`);
+        console.log(`✅ Hợp đồng ${contract.blockchainId} đã được từ chối trên blockchain`);
       } catch (blockchainError) {
-        console.warn('⚠️ Blockchain rejection error:', blockchainError.message);
+        console.warn('⚠️ Lỗi khi từ chối hợp đồng trên blockchain:', blockchainError.message);
       }
     }
 
@@ -328,14 +328,14 @@ router.post('/:id/reject', authenticateToken, requireManager, async (req, res) =
 
     res.json({
       status: 'success',
-      message: 'Contract rejected successfully',
+      message: 'Hợp đồng đã được từ chối thành công',
       data: { contract }
     });
   } catch (error) {
-    console.error('Reject contract error:', error);
+    console.error('Lỗi khi từ chối hợp đồng:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to reject contract'
+      message: 'Không thể từ chối hợp đồng'
     });
   }
 });
@@ -350,14 +350,14 @@ router.post('/:id/activate', authenticateToken, requireManager, async (req, res)
     if (!contract) {
       return res.status(404).json({
         status: 'error',
-        message: 'Contract not found'
+        message: 'Không tìm thấy hợp đồng'
       });
     }
 
     if (contract.status !== 'approved') {
       return res.status(400).json({
         status: 'error',
-        message: 'Only approved contracts can be activated'
+        message: 'Chỉ có hợp đồng đã được phê duyệt mới được kích hoạt'
       });
     }
 
@@ -365,7 +365,7 @@ router.post('/:id/activate', authenticateToken, requireManager, async (req, res)
     contract.history.push({
       action: 'activated',
       performedBy: req.user._id,
-      comment: req.body.comment || 'Contract activated'
+      comment: req.body.comment || 'Hợp đồng đã được kích hoạt'
     });
 
     await contract.save();
@@ -374,22 +374,22 @@ router.post('/:id/activate', authenticateToken, requireManager, async (req, res)
     if (contract.blockchainId) {
       try {
         await fabricService.activateContract(contract);
-        console.log(`✅ Contract ${contract.blockchainId} activated on blockchain`);
+        console.log(`✅ Hợp đồng ${contract.blockchainId} đã được kích hoạt trên blockchain`);
       } catch (blockchainError) {
-        console.warn('⚠️ Blockchain activation error:', blockchainError.message);
+        console.warn('⚠️ Lỗi khi kích hoạt hợp đồng trên blockchain:', blockchainError.message);
       }
     }
 
     res.json({
       status: 'success',
-      message: 'Contract activated successfully',
+      message: 'Hợp đồng đã được kích hoạt thành công',
       data: { contract }
     });
   } catch (error) {
-    console.error('Activate contract error:', error);
+    console.error('Lỗi khi kích hoạt hợp đồng:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to activate contract'
+      message: 'Không thể kích hoạt hợp đồng'
     });
   }
 });
@@ -404,7 +404,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (!contract) {
       return res.status(404).json({
         status: 'error',
-        message: 'Contract not found'
+        message: 'Không tìm thấy hợp đồng'
       });
     }
 
@@ -413,7 +413,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         req.user.role !== 'admin') {
       return res.status(403).json({
         status: 'error',
-        message: 'Not authorized to delete this contract'
+        message: 'Không được phép xóa hợp đồng này'
       });
     }
 
@@ -421,7 +421,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (['approved', 'active', 'completed'].includes(contract.status)) {
       return res.status(400).json({
         status: 'error',
-        message: 'Cannot delete approved, active, or completed contracts'
+        message: 'Không thể xóa hợp đồng đã được phê duyệt/đang hoạt động/đã hoàn thành'
       });
     }
 
@@ -429,13 +429,13 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     res.json({
       status: 'success',
-      message: 'Contract deleted successfully'
+      message: 'Hợp đồng đã được xóa thành công'
     });
   } catch (error) {
-    console.error('Delete contract error:', error);
+    console.error('Lỗi khi xóa hợp đồng:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to delete contract'
+      message: 'Không thể xóa hợp đồng'
     });
   }
 });
@@ -475,7 +475,7 @@ router.get('/stats/overview', authenticateToken, async (req, res) => {
     console.error('Get stats error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to fetch statistics'
+      message: 'Không thể tải thống kê hợp đồng'
     });
   }
 });

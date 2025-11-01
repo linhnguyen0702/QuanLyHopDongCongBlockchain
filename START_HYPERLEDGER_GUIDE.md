@@ -144,6 +144,11 @@ peer lifecycle chaincode commit \
   --peerAddresses peer0.org1.example.com:7051 \
   --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 ```
+### khi chạy network xong chạy lệnh này 
+docker-compose exec cli bash
+peer chaincode query -C mychannel -n contract-chaincode -c '{"function":"GetAllContracts","Args":[]}'
+
+
 
 ## 🔧 BƯỚC 4: Khởi Động Backend Server
 
