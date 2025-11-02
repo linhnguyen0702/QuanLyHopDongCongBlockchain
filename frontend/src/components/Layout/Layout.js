@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Drawer,
@@ -18,7 +18,7 @@ import {
   Badge,
   TextField,
   InputAdornment,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
@@ -36,22 +36,43 @@ import {
   ChevronLeft as ChevronLeftIcon,
   Shield as ShieldIcon,
   Approval as ApprovalIcon,
-} from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+} from "@mui/icons-material";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import WalletConnect from "../Blockchain/WalletConnect";
 
 const drawerWidth = 280;
 
 const menuItems = [
-  { text: 'Tổng quan', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Hợp đồng', icon: <ContractIcon />, path: '/contracts' },
-  { text: 'Phê duyệt', icon: <ApprovalIcon />, path: '/approval', managerOnly: true },
-  { text: 'Nhà thầu', icon: <BusinessIcon />, path: '/contractors' },
-  { text: 'Báo cáo', icon: <ReportIcon />, path: '/reports', managerOnly: true },
-  { text: 'Audit Trail', icon: <HistoryIcon />, path: '/audit', managerOnly: true },
-  { text: 'Người dùng', icon: <PeopleIcon />, path: '/users', adminOnly: true },
-  { text: 'Bảo mật', icon: <SecurityIcon />, path: '/security', adminOnly: true },
-  { text: 'Cài đặt', icon: <SettingsIcon />, path: '/settings' },
+  { text: "Tổng quan", icon: <DashboardIcon />, path: "/dashboard" },
+  { text: "Hợp đồng", icon: <ContractIcon />, path: "/contracts" },
+  {
+    text: "Phê duyệt",
+    icon: <ApprovalIcon />,
+    path: "/approval",
+    managerOnly: true,
+  },
+  { text: "Nhà thầu", icon: <BusinessIcon />, path: "/contractors" },
+  {
+    text: "Báo cáo",
+    icon: <ReportIcon />,
+    path: "/reports",
+    managerOnly: true,
+  },
+  {
+    text: "Audit Trail",
+    icon: <HistoryIcon />,
+    path: "/audit",
+    managerOnly: true,
+  },
+  { text: "Người dùng", icon: <PeopleIcon />, path: "/users", adminOnly: true },
+  {
+    text: "Bảo mật",
+    icon: <SecurityIcon />,
+    path: "/security",
+    adminOnly: true,
+  },
+  { text: "Cài đặt", icon: <SettingsIcon />, path: "/settings" },
 ];
 
 const Layout = ({ children }) => {
@@ -76,7 +97,7 @@ const Layout = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
     handleProfileMenuClose();
   };
 
@@ -85,7 +106,7 @@ const Layout = ({ children }) => {
     setMobileOpen(false);
   };
 
-  const filteredMenuItems = menuItems.filter(item => {
+  const filteredMenuItems = menuItems.filter((item) => {
     if (item.adminOnly && !isAdmin) return false;
     if (item.managerOnly && !isManager) return false;
     return true;
@@ -94,20 +115,27 @@ const Layout = ({ children }) => {
   const actualDrawerWidth = collapsed ? 80 : drawerWidth;
 
   const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Logo Section */}
-      <Box sx={{ p: collapsed ? 2 : 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box
+        sx={{
+          p: collapsed ? 2 : 3,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         {!collapsed && (
-          <Box 
-            onClick={() => navigate('/dashboard')}
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              '&:hover': {
+          <Box
+            onClick={() => navigate("/dashboard")}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+              transition: "opacity 0.2s",
+              "&:hover": {
                 opacity: 0.8,
-              }
+              },
             }}
           >
             <Box
@@ -115,20 +143,23 @@ const Layout = ({ children }) => {
                 width: 40,
                 height: 40,
                 borderRadius: 2,
-                backgroundColor: 'primary.main',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                backgroundColor: "primary.main",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 mr: 2,
               }}
             >
-              <ShieldIcon sx={{ color: 'white', fontSize: 24 }} />
+              <ShieldIcon sx={{ color: "white", fontSize: 24 }} />
             </Box>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: "bold", color: "text.primary" }}
+              >
                 Quản lý HĐ
               </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 Blockchain System
               </Typography>
             </Box>
@@ -136,32 +167,32 @@ const Layout = ({ children }) => {
         )}
         {collapsed && (
           <Box
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             sx={{
               width: 40,
               height: 40,
               borderRadius: 2,
-              backgroundColor: 'primary.main',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              '&:hover': {
+              backgroundColor: "primary.main",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto",
+              cursor: "pointer",
+              transition: "opacity 0.2s",
+              "&:hover": {
                 opacity: 0.8,
-              }
+              },
             }}
           >
-            <ShieldIcon sx={{ color: 'white', fontSize: 24 }} />
+            <ShieldIcon sx={{ color: "white", fontSize: 24 }} />
           </Box>
         )}
         <IconButton
           onClick={() => setCollapsed(!collapsed)}
           size="small"
-          sx={{ 
-            color: 'text.secondary',
-            display: collapsed ? 'none' : 'flex'
+          sx={{
+            color: "text.secondary",
+            display: collapsed ? "none" : "flex",
           }}
         >
           <ChevronLeftIcon />
@@ -170,17 +201,22 @@ const Layout = ({ children }) => {
           <IconButton
             onClick={() => setCollapsed(!collapsed)}
             size="small"
-            sx={{ color: 'text.secondary', position: 'absolute', right: 0, top: 8 }}
+            sx={{
+              color: "text.secondary",
+              position: "absolute",
+              right: 0,
+              top: 8,
+            }}
           >
-            <ChevronLeftIcon sx={{ transform: 'rotate(180deg)' }} />
+            <ChevronLeftIcon sx={{ transform: "rotate(180deg)" }} />
           </IconButton>
         )}
       </Box>
-      
+
       {!collapsed && <Divider />}
-      
+
       {/* Menu Items */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', mt: 1 }}>
+      <Box sx={{ flexGrow: 1, overflowY: "auto", mt: 1 }}>
         <List sx={{ px: collapsed ? 0.5 : 1, py: 1 }}>
           {filteredMenuItems.map((item) => (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
@@ -190,63 +226,72 @@ const Layout = ({ children }) => {
                 sx={{
                   borderRadius: 2,
                   mx: collapsed ? 0.5 : 1,
-                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  justifyContent: collapsed ? "center" : "flex-start",
                   minHeight: 48,
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.main',
-                    color: 'white',
-                    '&:hover': {
-                      backgroundColor: 'primary.dark',
+                  "&.Mui-selected": {
+                    backgroundColor: "primary.main",
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: "primary.dark",
                     },
-                    '& .MuiListItemIcon-root': {
-                      color: 'white',
+                    "& .MuiListItemIcon-root": {
+                      color: "white",
                     },
                   },
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
+                  "&:hover": {
+                    backgroundColor: "action.hover",
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center' }}>
+                <ListItemIcon sx={{ minWidth: 0, justifyContent: "center" }}>
                   {item.icon}
                 </ListItemIcon>
-                {!collapsed && <ListItemText primary={item.text} sx={{ ml: 2 }} />}
+                {!collapsed && (
+                  <ListItemText primary={item.text} sx={{ ml: 2 }} />
+                )}
               </ListItemButton>
             </ListItem>
           ))}
         </List>
       </Box>
-      
+
       {!collapsed && <Divider />}
-      
+
       {/* User Info */}
-      <Box sx={{ p: collapsed ? 1 : 2, mt: 'auto', cursor: 'pointer' }}>
-        <Box 
-          onClick={() => navigate('/profile')}
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: collapsed ? 'center' : 'flex-start',
+      <Box sx={{ p: collapsed ? 1 : 2, mt: "auto", cursor: "pointer" }}>
+        <Box
+          onClick={() => navigate("/profile")}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: collapsed ? "center" : "flex-start",
             p: 1,
             borderRadius: 2,
-            '&:hover': {
-              backgroundColor: 'action.hover',
+            "&:hover": {
+              backgroundColor: "action.hover",
             },
           }}
         >
-          <Avatar 
-            src={user?.avatar ? `http://localhost:5000/${user.avatar}` : undefined}
-            sx={{ width: collapsed ? 40 : 32, height: collapsed ? 40 : 32, bgcolor: 'primary.main', mr: collapsed ? 0 : 2 }}
+          <Avatar
+            src={
+              user?.avatar ? `http://localhost:5000/${user.avatar}` : undefined
+            }
+            sx={{
+              width: collapsed ? 40 : 32,
+              height: collapsed ? 40 : 32,
+              bgcolor: "primary.main",
+              mr: collapsed ? 0 : 2,
+            }}
           >
-            {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
+            {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
           </Avatar>
           {!collapsed && (
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                {user?.fullName || 'Admin User'}
+              <Typography variant="body2" sx={{ fontWeight: "medium" }}>
+                {user?.fullName || "Admin User"}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {user?.email || 'admin@gov.vn'}
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                {user?.email || "admin@gov.vn"}
               </Typography>
             </Box>
           )}
@@ -256,29 +301,29 @@ const Layout = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: "flex" }}>
       <AppBar
         position="fixed"
         sx={{
           width: { sm: `calc(100% - ${actualDrawerWidth}px)` },
           left: { sm: `${actualDrawerWidth}px` },
-          backgroundColor: 'white',
-          color: 'text.primary',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          backgroundColor: "white",
+          color: "text.primary",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { sm: 'none' } }}
+              sx={{ mr: 2, display: { sm: "none" } }}
             >
               <MenuIcon />
             </IconButton>
-            
+
             {/* Search Bar */}
             <TextField
               placeholder="Tìm kiếm hợp đồng, nhà thầu..."
@@ -286,41 +331,46 @@ const Layout = ({ children }) => {
               size="small"
               sx={{
                 minWidth: 300,
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'grey.50',
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "grey.50",
                   borderRadius: 2,
-                  '& fieldset': {
-                    borderColor: 'grey.300',
+                  "& fieldset": {
+                    borderColor: "grey.300",
                   },
-                  '&:hover fieldset': {
-                    borderColor: 'grey.400',
+                  "&:hover fieldset": {
+                    borderColor: "grey.400",
                   },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main',
+                  "&.Mui-focused fieldset": {
+                    borderColor: "primary.main",
                   },
                 },
               }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                    <SearchIcon sx={{ color: "text.secondary" }} />
                   </InputAdornment>
                 ),
               }}
             />
           </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {/* Wallet Connect */}
+            <Box sx={{ mr: 2 }}>
+              <WalletConnect />
+            </Box>
+
             {/* Notifications */}
             <IconButton color="inherit" sx={{ mr: 1 }}>
               <Badge badgeContent={3} color="error">
-                <NotificationIcon sx={{ color: 'text.secondary' }} />
+                <NotificationIcon sx={{ color: "text.secondary" }} />
               </Badge>
             </IconButton>
-            
+
             {/* User Menu */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 Admin
               </Typography>
               <IconButton
@@ -332,11 +382,15 @@ const Layout = ({ children }) => {
                 onClick={handleProfileMenuOpen}
                 color="inherit"
               >
-                <Avatar 
-                  src={user?.avatar ? `http://localhost:5000/${user.avatar}` : undefined}
-                  sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}
+                <Avatar
+                  src={
+                    user?.avatar
+                      ? `http://localhost:5000/${user.avatar}`
+                      : undefined
+                  }
+                  sx={{ width: 32, height: 32, bgcolor: "primary.main" }}
                 >
-                  {user?.fullName?.charAt(0)?.toUpperCase() || 'A'}
+                  {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
                 </Avatar>
               </IconButton>
             </Box>
@@ -352,39 +406,49 @@ const Layout = ({ children }) => {
         PaperProps={{
           elevation: 0,
           sx: {
-            overflow: 'visible',
-            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+            overflow: "visible",
+            filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
             mt: 1.5,
-            '& .MuiAvatar-root': {
+            "& .MuiAvatar-root": {
               width: 32,
               height: 32,
               ml: -0.5,
               mr: 1,
             },
-            '&:before': {
+            "&:before": {
               content: '""',
-              display: 'block',
-              position: 'absolute',
+              display: "block",
+              position: "absolute",
               top: 0,
               right: 14,
               width: 10,
               height: 10,
-              bgcolor: 'background.paper',
-              transform: 'translateY(-50%) rotate(45deg)',
+              bgcolor: "background.paper",
+              transform: "translateY(-50%) rotate(45deg)",
               zIndex: 0,
             },
           },
         }}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        <MenuItem onClick={() => { navigate('/profile'); handleProfileMenuClose(); }}>
+        <MenuItem
+          onClick={() => {
+            navigate("/profile");
+            handleProfileMenuClose();
+          }}
+        >
           <ListItemIcon>
             <ProfileIcon fontSize="small" />
           </ListItemIcon>
           Thông tin cá nhân
         </MenuItem>
-        <MenuItem onClick={() => { navigate('/settings'); handleProfileMenuClose(); }}>
+        <MenuItem
+          onClick={() => {
+            navigate("/settings");
+            handleProfileMenuClose();
+          }}
+        >
           <ListItemIcon>
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
@@ -401,10 +465,10 @@ const Layout = ({ children }) => {
 
       <Box
         component="nav"
-        sx={{ 
-          width: { sm: actualDrawerWidth }, 
+        sx={{
+          width: { sm: actualDrawerWidth },
           flexShrink: { sm: 0 },
-          position: 'relative',
+          position: "relative",
         }}
         aria-label="mailbox folders"
       >
@@ -416,8 +480,11 @@ const Layout = ({ children }) => {
             keepMounted: true,
           }}
           sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
+              width: drawerWidth,
+            },
           }}
         >
           {drawer}
@@ -425,14 +492,14 @@ const Layout = ({ children }) => {
         <Drawer
           variant="permanent"
           sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { 
-              boxSizing: 'border-box', 
+            display: { xs: "none", sm: "block" },
+            "& .MuiDrawer-paper": {
+              boxSizing: "border-box",
               width: actualDrawerWidth,
-              transition: 'width 0.3s ease',
-              border: 'none',
-              borderRight: '1px solid',
-              borderRightColor: 'divider',
+              transition: "width 0.3s ease",
+              border: "none",
+              borderRight: "1px solid",
+              borderRightColor: "divider",
             },
           }}
           open
@@ -447,9 +514,9 @@ const Layout = ({ children }) => {
           p: 3,
           width: { sm: `calc(100% - ${actualDrawerWidth}px)` },
           mt: 8,
-          backgroundColor: 'grey.50',
-          minHeight: 'calc(100vh - 64px)',
-          transition: 'width 0.3s ease, margin-left 0.3s ease',
+          backgroundColor: "grey.50",
+          minHeight: "calc(100vh - 64px)",
+          transition: "width 0.3s ease, margin-left 0.3s ease",
         }}
       >
         {children}
