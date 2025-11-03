@@ -18,7 +18,7 @@ api.interceptors.request.use(
     }
 
     // Thêm cache-busting headers cho API users
-    if (config.url && config.url.includes("/users")) {
+        if (config.url && (config.url.includes("/users") || config.url.includes("/audit") || config.url.includes("/security"))) {
       config.headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
       config.headers["Pragma"] = "no-cache";
       config.headers["Expires"] = "0";
@@ -48,6 +48,7 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: (email, password) => api.post("/auth/login", { email, password }),
+  verifyOtp: (userId, otpCode) => api.post('/auth/verify-otp', { userId, otpCode }),
   register: (userData) => api.post("/auth/register", userData),
   getProfile: () => api.get("/auth/me"),
   updateProfile: (profileData) => api.put("/auth/profile", profileData),
@@ -118,7 +119,13 @@ export const auditAPI = {
 
 // Security API
 export const securityAPI = {
-  getSettings: () => api.get("/security/settings"),
+  getSettings: () => api.get("/security/settings", {
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  }),
   updateSettings: (settings) => api.put("/security/settings", settings),
   changePassword: (passwordData) =>
     api.post("/security/change-password", passwordData),

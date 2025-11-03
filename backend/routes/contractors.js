@@ -2,6 +2,7 @@ const express = require('express');
 const Contractor = require('../models/Contractor');
 const { validate, schemas } = require('../middleware/validation');
 const { authenticateToken, requireManager } = require('../middleware/auth');
+const AuditLog = require('../models/AuditLog');
 
 const router = express.Router();
 
@@ -140,6 +141,15 @@ router.post('/', authenticateToken, requireManager, validate(schemas.createContr
       createdBy: req.user._id
     });
 
+    await AuditLog.createLog({
+      type: 'contractor',
+      action: 'created',
+      description: `Nhà thầu "${contractor.contractorName}" đã được tạo.`,
+      performedBy: req.user._id,
+      resourceId: contractor._id,
+      resourceType: 'Contractor'
+    });
+
     await contractor.save();
 
     res.status(201).json({
@@ -206,11 +216,20 @@ router.put('/:id', authenticateToken, requireManager, validate(schemas.updateCon
       }
     }
 
-    const updatedContractor = await Contractor.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('createdBy', 'username fullName');
+    // Apply updates
+    Object.assign(contractor, req.body);
+
+    await AuditLog.createLog({
+      type: 'contractor',
+      action: 'updated',
+      description: `Nhà thầu "${contractor.contractorName}" đã được cập nhật.`,
+      performedBy: req.user._id,
+      resourceId: contractor._id,
+      resourceType: 'Contractor'
+    });
+
+    const updatedContractor = await contractor.save();
+    await updatedContractor.populate('createdBy', 'username fullName');
 
     res.json({
       status: 'success',
@@ -242,6 +261,14 @@ router.delete('/:id', authenticateToken, requireManager, async (req, res) => {
 
     // Soft delete by setting status to inactive
     contractor.status = 'inactive';
+    await AuditLog.createLog({
+      type: 'contractor',
+      action: 'deactivated',
+      description: `Nhà thầu "${contractor.contractorName}" đã bị vô hiệu hóa.`,
+      performedBy: req.user._id,
+      resourceId: contractor._id,
+      resourceType: 'Contractor'
+    });
     await contractor.save();
 
     res.json({
@@ -272,6 +299,14 @@ router.post('/:id/activate', authenticateToken, requireManager, async (req, res)
     }
 
     contractor.status = 'active';
+    await AuditLog.createLog({
+      type: 'contractor',
+      action: 'activated',
+      description: `Nhà thầu "${contractor.contractorName}" đã được kích hoạt.`,
+      performedBy: req.user._id,
+      resourceId: contractor._id,
+      resourceType: 'Contractor'
+    });
     await contractor.save();
 
     res.json({
@@ -303,6 +338,14 @@ router.post('/:id/suspend', authenticateToken, requireManager, async (req, res) 
     }
 
     contractor.status = 'suspended';
+    await AuditLog.createLog({
+      type: 'contractor',
+      action: 'suspended',
+      description: `Nhà thầu "${contractor.contractorName}" đã bị tạm dừng.`,
+      performedBy: req.user._id,
+      resourceId: contractor._id,
+      resourceType: 'Contractor'
+    });
     await contractor.save();
 
     res.json({

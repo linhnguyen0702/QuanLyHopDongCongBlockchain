@@ -123,37 +123,6 @@ contractorSchema.virtual('formattedInfo').get(function() {
   return `${this.contractorName} (${this.contractorCode})`;
 });
 
-// Pre-save middleware to add history entry
-contractorSchema.pre('save', function(next) {
-  if (this.isNew) {
-    this.history.push({
-      action: 'created',
-      performedBy: this.createdBy,
-      comment: 'Contractor created'
-    });
-  } else if (this.isModified()) {
-    const changes = {};
-    const modifiedFields = this.modifiedPaths();
-    
-    modifiedFields.forEach(field => {
-      if (field !== 'history' && field !== 'updatedAt') {
-        changes[field] = {
-          from: this.get(field, null, { getters: false }),
-          to: this.get(field)
-        };
-      }
-    });
-    
-    this.history.push({
-      action: 'updated',
-      performedBy: this.createdBy,
-      changes: changes,
-      comment: 'Contractor updated'
-    });
-  }
-  
-  next();
-});
 
 // Static method to find contractors by status
 contractorSchema.statics.findByStatus = function(status) {

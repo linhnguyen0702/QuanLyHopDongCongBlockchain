@@ -88,7 +88,8 @@ const ActivityItem = ({ activity }) => {
               label={getActionText(activity.action)}
               color={getActivityColor(activity.action)}
               size="small"
-            />
+              secondaryTypographyProps={{ component: 'div' }}
+      />
           </Box>
         }
         secondary={
@@ -139,7 +140,7 @@ const Audit = () => {
     }
   );
 
-  const auditLogs = auditData?.data?.logs || [];
+  const auditLogs = auditData?.data?.data?.logs || [];
 
   if (isLoading) return <LoadingSpinner />;
 

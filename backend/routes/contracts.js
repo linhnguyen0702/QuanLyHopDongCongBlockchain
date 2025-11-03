@@ -3,7 +3,7 @@ const Contract = require("../models/Contract");
 const { validate, schemas } = require("../middleware/validation");
 const { authenticateToken, requireManager } = require("../middleware/auth");
 const blockchainService = require("../services/blockchainService");
-
+const AuditLog = require('../models/AuditLog');
 const router = express.Router();
 
 // @route   GET /api/contracts
@@ -37,7 +37,11 @@ router.get(
         ];
       }
 
-      if (status) filter.status = status;
+      if (status) {
+        filter.status = status;
+      } else {
+        filter.status = { $ne: 'deleted' };
+      }
       if (contractType) filter.contractType = contractType;
       if (department) filter.department = department;
 
@@ -125,6 +129,16 @@ router.post(
       };
 
       const contract = new Contract(contractData);
+
+      await AuditLog.createLog({
+        type: 'contract',
+        action: 'created',
+        description: `Hợp đồng "${contract.contractName}" đã được tạo.`,
+        performedBy: req.user._id,
+        resourceId: contract._id,
+        resourceType: 'Contract'
+      });
+
       await contract.save();
 
       await contract.populate("createdBy", "username fullName email");
@@ -244,6 +258,15 @@ router.put(
       // Apply the updates to the document
       Object.assign(contractToUpdate, updateData);
 
+      await AuditLog.createLog({
+        type: 'contract',
+        action: 'updated',
+        description: `Hợp đồng "${contractToUpdate.contractName}" đã được cập nhật.`,
+        performedBy: req.user._id,
+        resourceId: contractToUpdate._id,
+        resourceType: 'Contract'
+      });
+
       // Save the document, which will run validators correctly
       const savedContract = await contractToUpdate.save();
 
@@ -334,10 +357,14 @@ router.post(
       contract.approvedBy = req.user._id;
       contract.approvedAt = new Date();
 
-      contract.history.push({
-        action: "approved",
+      await AuditLog.createLog({
+        type: 'contract',
+        action: 'approved',
+        description: `Hợp đồng "${contract.contractName}" đã được phê duyệt.`,
+        details: req.body.comment || 'Không có bình luận',
         performedBy: req.user._id,
-        comment: req.body.comment || "Hợp đồng đã được phê duyệt",
+        resourceId: contract._id,
+        resourceType: 'Contract'
       });
 
       await contract.save();
@@ -388,10 +415,14 @@ router.post(
       contract.rejectedBy = req.user._id;
       contract.rejectedAt = new Date();
 
-      contract.history.push({
-        action: "rejected",
+      await AuditLog.createLog({
+        type: 'contract',
+        action: 'rejected',
+        description: `Hợp đồng "${contract.contractName}" đã bị từ chối.`,
+        details: req.body.comment || 'Không có bình luận',
         performedBy: req.user._id,
-        comment: req.body.comment || "Hợp đồng đã được từ chối",
+        resourceId: contract._id,
+        resourceType: 'Contract'
       });
 
       await contract.save();
@@ -439,10 +470,14 @@ router.post(
       }
 
       contract.status = "active";
-      contract.history.push({
-        action: "activated",
+      await AuditLog.createLog({
+        type: 'contract',
+        action: 'activated',
+        description: `Hợp đồng "${contract.contractName}" đã được kích hoạt.`,
+        details: req.body.comment || 'Không có bình luận',
         performedBy: req.user._id,
-        comment: req.body.comment || "Hợp đồng đã được kích hoạt",
+        resourceId: contract._id,
+        resourceType: 'Contract'
       });
 
       await contract.save();
@@ -496,7 +531,16 @@ router.delete("/:id", authenticateToken, async (req, res) => {
       });
     }
 
-    await Contract.findByIdAndDelete(req.params.id);
+    contract.status = "deleted";
+    await AuditLog.createLog({
+      type: 'contract',
+      action: 'deleted',
+      description: `Hợp đồng "${contract.contractName}" đã bị xóa.`,
+      performedBy: req.user._id,
+      resourceId: contract._id,
+      resourceType: 'Contract'
+    });
+    await contract.save();
 
     res.json({
       status: "success",

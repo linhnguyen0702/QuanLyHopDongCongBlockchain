@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SecuritySettings = require('../models/SecuritySettings');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const AuditLog = require('../models/AuditLog');
 
 // @route   GET /api/security/settings
 // @desc    Get security settings
@@ -28,6 +29,13 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/settings', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const settings = await SecuritySettings.updateSettings(req.body, req.user._id);
+    await AuditLog.createLog({
+      type: 'security',
+      action: 'updated',
+      description: 'Cài đặt bảo mật hệ thống đã được cập nhật.',
+      performedBy: req.user._id
+    });
+
     res.json({
       status: 'success',
       message: 'Security settings updated successfully',
@@ -91,6 +99,13 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     // Update password
     user.password = hashedNewPassword;
     await user.save();
+
+    await AuditLog.createLog({
+      type: 'security',
+      action: 'password_change',
+      description: `Người dùng ${user.username} đã thay đổi mật khẩu của họ.`,
+      performedBy: user._id
+    });
 
     res.json({
       status: 'success',

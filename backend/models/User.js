@@ -59,7 +59,28 @@ const userSchema = new mongoose.Schema({
   },
   avatar: {
     type: String
-  }
+  },
+  otpCode: {
+    type: String
+  },
+  otpCodeExpires: {
+    type: Date
+  },
+  history: [{
+    action: {
+      type: String,
+      enum: ['created', 'updated', 'activated', 'deactivated', 'password_changed', 'profile_updated']
+    },
+    performedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    performedAt: {
+      type: Date,
+      default: Date.now
+    },
+    comment: String
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

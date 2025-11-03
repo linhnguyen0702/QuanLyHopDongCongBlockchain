@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -10,13 +10,11 @@ import {
   Button,
   TextField,
   Alert,
-  Chip,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Divider,
-  Paper,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -28,20 +26,20 @@ import {
   Lock as LockIcon,
   VpnKey as VpnKeyIcon,
   Shield as ShieldIcon,
-  Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
   Save as SaveIcon,
-  Refresh as RefreshIcon,
+  Edit as EditIcon,
+  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { securityAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-const SecurityItem = ({ title, description, enabled, onToggle, icon, color = 'primary' }) => (
-  <Card sx={{ mb: 2 }}>
+const SecurityItem = ({ title, description, enabled, onToggle, icon, color = 'primary', disabled }) => (
+  <Card sx={{ mb: 2, opacity: disabled ? 0.7 : 1 }}>
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -70,6 +68,7 @@ const SecurityItem = ({ title, description, enabled, onToggle, icon, color = 'pr
               checked={enabled}
               onChange={onToggle}
               color={color}
+              disabled={disabled}
             />
           }
           label=""
@@ -96,8 +95,10 @@ const Security = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [settings, setSettings] = useState(null);
+  const [editMode, setEditMode] = useState(false);
 
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
   // Fetch security settings
@@ -106,9 +107,15 @@ const Security = () => {
     securityAPI.getSettings,
     {
       enabled: isAdmin,
-      select: (data) => data.data.settings
+      select: (response) => response.data.data.settings
     }
   );
+
+  useEffect(() => {
+    if (settingsData) {
+      setSettings(settingsData);
+    }
+  }, [settingsData]);
 
   // Fetch security alerts
   const { data: alertsData } = useQuery(
@@ -132,11 +139,12 @@ const Security = () => {
 
   // Update settings mutation
   const updateSettingsMutation = useMutation(
-    (settings) => securityAPI.updateSettings(settings),
+    (newSettings) => securityAPI.updateSettings(newSettings),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('securitySettings');
         toast.success('Đã lưu cài đặt bảo mật!');
+        setEditMode(false);
       },
       onError: (error) => {
         toast.error(error.response?.data?.message || 'Lưu cài đặt thất bại!');
@@ -159,30 +167,26 @@ const Security = () => {
     }
   );
 
-  const securitySettings = settingsData || {
-    twoFactorAuth: false,
-    passwordPolicy: true,
-    sessionTimeout: true,
-    ipWhitelist: false,
-    auditLogging: true,
-    encryption: true,
-    backupEnabled: true,
-    autoLogout: true
-  };
-
   const securityAlerts = alertsData || [];
   const recentActivities = activitiesData || [];
 
   const handleToggle = (setting) => {
-    const newSettings = {
-      ...securitySettings,
-      [setting]: !securitySettings[setting]
-    };
-    updateSettingsMutation.mutate(newSettings);
+    setSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting]
+    }));
   };
 
   const handleSaveSettings = () => {
-    updateSettingsMutation.mutate(securitySettings);
+    if (settings) {
+      updateSettingsMutation.mutate(settings);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setSettings(settingsData); // Revert to original data
+    setEditMode(false);
+    toast('Đã hủy các thay đổi.');
   };
 
   const handleChangePassword = () => {
@@ -200,7 +204,7 @@ const Security = () => {
     });
   };
 
-  if (settingsLoading) {
+  if (settingsLoading || !settings) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
         <CircularProgress />
@@ -259,72 +263,91 @@ const Security = () => {
               <SecurityItem
                 title="Xác thực 2 yếu tố"
                 description="Yêu cầu mã OTP khi đăng nhập"
-                enabled={securitySettings.twoFactorAuth}
+                enabled={settings.twoFactorAuth}
                 onToggle={() => handleToggle('twoFactorAuth')}
                 icon={<VpnKeyIcon />}
                 color="primary"
+                disabled={!editMode}
               />
               
               <SecurityItem
                 title="Chính sách mật khẩu"
                 description="Yêu cầu mật khẩu mạnh và thay đổi định kỳ"
-                enabled={securitySettings.passwordPolicy}
+                enabled={settings.passwordPolicy}
                 onToggle={() => handleToggle('passwordPolicy')}
                 icon={<LockIcon />}
                 color="warning"
+                disabled={!editMode}
               />
               
               <SecurityItem
                 title="Hết hạn phiên đăng nhập"
                 description="Tự động đăng xuất sau 30 phút không hoạt động"
-                enabled={securitySettings.sessionTimeout}
+                enabled={settings.sessionTimeout}
                 onToggle={() => handleToggle('sessionTimeout')}
                 icon={<ShieldIcon />}
                 color="info"
+                disabled={!editMode}
               />
               
               <SecurityItem
                 title="Danh sách IP được phép"
                 description="Chỉ cho phép đăng nhập từ IP đã đăng ký"
-                enabled={securitySettings.ipWhitelist}
+                enabled={settings.ipWhitelist}
                 onToggle={() => handleToggle('ipWhitelist')}
                 icon={<SecurityIcon />}
                 color="secondary"
+                disabled={!editMode}
               />
               
               <SecurityItem
                 title="Ghi log hoạt động"
                 description="Ghi lại tất cả hoạt động của người dùng"
-                enabled={securitySettings.auditLogging}
+                enabled={settings.auditLogging}
                 onToggle={() => handleToggle('auditLogging')}
                 icon={<InfoIcon />}
                 color="success"
+                disabled={!editMode}
               />
               
               <SecurityItem
                 title="Mã hóa dữ liệu"
                 description="Mã hóa dữ liệu nhạy cảm trong database"
-                enabled={securitySettings.encryption}
+                enabled={settings.encryption}
                 onToggle={() => handleToggle('encryption')}
                 icon={<LockIcon />}
                 color="error"
+                disabled={!editMode}
               />
 
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSaveSettings}
-                >
-                  Lưu cài đặt
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<RefreshIcon />}
-                  onClick={() => window.location.reload()}
-                >
-                  Làm mới
-                </Button>
+                {editMode ? (
+                  <>
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSaveSettings}
+                      disabled={updateSettingsMutation.isLoading}
+                    >
+                      {updateSettingsMutation.isLoading ? 'Đang lưu...' : 'Lưu'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<CancelIcon />}
+                      onClick={handleCancelEdit}
+                    >
+                      Hủy
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="contained"
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditMode(true)}
+                  >
+                    Cài đặt
+                  </Button>
+                )}
               </Box>
             </CardContent>
           </Card>
@@ -417,8 +440,8 @@ const Security = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setChangePasswordDialog(false)}>Hủy</Button>
-          <Button onClick={handleChangePassword} variant="contained">
-            Thay đổi
+          <Button onClick={handleChangePassword} variant="contained" disabled={changePasswordMutation.isLoading}>
+            {changePasswordMutation.isLoading ? 'Đang thay đổi...' : 'Thay đổi'}
           </Button>
         </DialogActions>
       </Dialog>

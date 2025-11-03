@@ -265,7 +265,7 @@ http://localhost:3000
 
 **Tài khoản mặc định:**
 
-- **Admin**: `admin@gov.vn` / `admin123`
+- **Admin**: admin@example.com / /password123
 - **Manager**: `manager@gov.vn` / `manager123`
 - **Employee**: `user@gov.vn` / `user123`
 

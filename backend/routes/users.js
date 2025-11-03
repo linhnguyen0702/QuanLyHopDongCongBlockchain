@@ -2,6 +2,7 @@ const express = require('express');
 const User = require('../models/User');
 const { validate, schemas } = require('../middleware/validation');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const AuditLog = require('../models/AuditLog');
 
 const router = express.Router();
 
@@ -46,6 +47,15 @@ router.post('/', authenticateToken, requireAdmin, validate(schemas.createUser), 
       department,
       phone,
       position
+    });
+
+    await AuditLog.createLog({
+      type: 'user',
+      action: 'created',
+      description: `Người dùng "${user.username}" đã được tạo bởi ${req.user.username}.`,
+      performedBy: req.user._id,
+      resourceId: user._id,
+      resourceType: 'User'
     });
 
     await user.save();
@@ -189,11 +199,19 @@ router.put('/:id', authenticateToken, requireAdmin, validate(schemas.updateUser)
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).select('-password');
+    // Apply updates
+    Object.assign(user, req.body);
+
+    await AuditLog.createLog({
+      type: 'user',
+      action: 'updated',
+      description: `Người dùng "${user.username}" đã được cập nhật bởi ${req.user.username}.`,
+      performedBy: req.user._id,
+      resourceId: user._id,
+      resourceType: 'User'
+    });
+
+    const updatedUser = await user.save();
 
     res.json({
       status: 'success',
@@ -233,6 +251,14 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
 
     // Soft delete by setting isActive to false
     user.isActive = false;
+    await AuditLog.createLog({
+      type: 'user',
+      action: 'deactivated',
+      description: `Người dùng "${user.username}" đã bị vô hiệu hóa bởi ${req.user.username}.`,
+      performedBy: req.user._id,
+      resourceId: user._id,
+      resourceType: 'User'
+    });
     await user.save();
 
     res.json({
@@ -263,6 +289,14 @@ router.post('/:id/activate', authenticateToken, requireAdmin, async (req, res) =
     }
 
     user.isActive = true;
+    await AuditLog.createLog({
+      type: 'user',
+      action: 'activated',
+      description: `Người dùng "${user.username}" đã được kích hoạt bởi ${req.user.username}.`,
+      performedBy: req.user._id,
+      resourceId: user._id,
+      resourceType: 'User'
+    });
     await user.save();
 
     res.json({
