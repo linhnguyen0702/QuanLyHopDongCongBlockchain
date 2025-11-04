@@ -1,0 +1,19 @@
+{
+  "sidebar": {
+    "dashboard": "Tổng quan",
+    "contracts": "Hợp đồng",
+    "approval": "Phê duyệt",
+    "contractors": "Nhà thầu",
+    "reports": "Báo cáo",
+    "audit": "Audit Trail",
+    "users": "Người dùng",
+    "security": "Bảo mật",
+    "settings": "Cài đặt"
+  },
+  "settings": {
+    "title": "Cài đặt hệ thống",
+    "edit_button": "Cài đặt",
+    "save_button": "Lưu cài đặt",
+    "cancel_button": "Hủy"
+  }
+}

@@ -24,12 +24,12 @@ mongoose
 
     // Create default admin user if not exists
     const User = require("./models/User");
-    const adminExists = await User.findOne({ email: "admin@example.com" });
+    const adminExists = await User.findOne({ email: "linhnguyen020724@gmail.com" });
 
     if (!adminExists) {
       const adminUser = new User({
         username: "admin",
-        email: "admin@example.com",
+        email: "linhnguyen020724@gmail.com",
         password: "password123",
         fullName: "System Administrator",
         role: "admin",

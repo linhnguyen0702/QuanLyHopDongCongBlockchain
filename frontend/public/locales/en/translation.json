@@ -1,0 +1,19 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "contracts": "Contracts",
+    "approval": "Approval",
+    "contractors": "Contractors",
+    "reports": "Reports",
+    "audit": "Audit Trail",
+    "users": "Users",
+    "security": "Security",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "System Settings",
+    "edit_button": "Settings",
+    "save_button": "Save Settings",
+    "cancel_button": "Cancel"
+  }
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -23,19 +23,14 @@ import {
 import {
   Settings as SettingsIcon,
   Save as SaveIcon,
-  Refresh as RefreshIcon,
+  Cancel as CancelIcon,
   Language as LanguageIcon,
   Palette as PaletteIcon,
-  Notifications as NotificationsIcon,
-  Storage as StorageIcon,
-  Email as EmailIcon,
-  Backup as BackupIcon,
-  Update as UpdateIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { settingsAPI, userAPI, contractAPI, reportAPI } from '../../services/api';
+import { settingsAPI, userAPI, reportAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const SettingSection = ({ title, icon, children }) => (
@@ -43,7 +38,7 @@ const SettingSection = ({ title, icon, children }) => (
     <CardContent>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
         <Box sx={{ 
-          bgcolor: 'primary.light', 
+          bgcolor: 'primary.light',
           borderRadius: 2, 
           p: 1.5,
           display: 'flex',
@@ -61,21 +56,52 @@ const SettingSection = ({ title, icon, children }) => (
   </Card>
 );
 
+const defaultSettings = {
+  language: 'vi',
+  timezone: 'Asia/Ho_Chi_Minh',
+  dateFormat: 'DD/MM/YYYY',
+  currency: 'VND',
+  theme: 'light',
+  primaryColor: '#7c3aed',
+  fontSize: 'medium',
+  compactMode: false,
+  emailNotifications: true,
+  pushNotifications: false,
+  contractAlerts: true,
+  systemAlerts: true,
+  autoBackup: true,
+  backupFrequency: 'daily',
+  dataRetention: '1year',
+  maintenanceMode: false,
+  smtpHost: 'smtp.gmail.com',
+  smtpPort: 587,
+  smtpUser: '',
+  smtpPassword: '',
+  fromEmail: 'noreply@company.com',
+  fromName: 'Contract Management System'
+};
+
 const Settings = () => {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [localSettings, setLocalSettings] = useState(null);
 
-  // Fetch system settings
   const { data: settingsData, isLoading: settingsLoading } = useQuery(
     'systemSettings',
     settingsAPI.getSettings,
     {
       enabled: isAdmin,
-      select: (data) => data.data.settings
+      select: (data) => data.data.settings,
     }
   );
 
-  // Fetch system info
+  useEffect(() => {
+    if (!settingsLoading) {
+      setLocalSettings(settingsData || defaultSettings);
+    }
+  }, [settingsLoading, settingsData]);
+
   const { data: systemInfoData } = useQuery(
     'systemInfo',
     settingsAPI.getSystemInfo,
@@ -85,11 +111,10 @@ const Settings = () => {
     }
   );
 
-  // Fetch system stats (users and contracts)
   const { data: systemStatsData } = useQuery(
     'systemStats',
     async () => {
-      const [userStatsRes, dashboardDataRes] = await Promise.all([
+      const [, dashboardDataRes] = await Promise.all([
         userAPI.getUserStats(),
         reportAPI.getDashboardData(),
       ]);
@@ -103,13 +128,13 @@ const Settings = () => {
     }
   );
 
-  // Update settings mutation
   const updateSettingsMutation = useMutation(
     (settings) => settingsAPI.updateSettings(settings),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('systemSettings');
         toast.success('Đã lưu cài đặt thành công!');
+        setIsEditMode(false);
       },
       onError: (error) => {
         toast.error(error.response?.data?.message || 'Lưu cài đặt thất bại!');
@@ -117,82 +142,17 @@ const Settings = () => {
     }
   );
 
-  // Create backup mutation
-  const createBackupMutation = useMutation(
-    () => settingsAPI.createBackup(),
-    {
-      onSuccess: () => {
-        toast.success('Tạo sao lưu thành công!');
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Tạo sao lưu thất bại!');
-      }
-    }
-  );
+  const handleSettingChange = (key, value) => {
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
+  };
 
-  // Check updates mutation
-  const checkUpdatesMutation = useMutation(
-    () => settingsAPI.checkUpdates(),
-    {
-      onSuccess: (data) => {
-        const updates = data.data.updates;
-        if (updates.available) {
-          toast.success(`Có bản cập nhật mới: ${updates.latestVersion}`);
-        } else {
-          toast.info('Hệ thống đã được cập nhật mới nhất');
-        }
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Kiểm tra cập nhật thất bại!');
-      }
-    }
-  );
+  const handleSaveSettings = () => {
+    updateSettingsMutation.mutate(localSettings);
+  };
 
-  // Clear cache mutation
-  const clearCacheMutation = useMutation(
-    () => settingsAPI.clearCache(),
-    {
-      onSuccess: () => {
-        toast.success('Dọn dẹp cache thành công!');
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Dọn dẹp cache thất bại!');
-      }
-    }
-  );
-
-  const settings = settingsData || {
-    // General Settings
-    language: 'vi',
-    timezone: 'Asia/Ho_Chi_Minh',
-    dateFormat: 'DD/MM/YYYY',
-    currency: 'VND',
-    
-    // Appearance Settings
-    theme: 'light',
-    primaryColor: '#7c3aed',
-    fontSize: 'medium',
-    compactMode: false,
-    
-    // Notification Settings
-    emailNotifications: true,
-    pushNotifications: false,
-    contractAlerts: true,
-    systemAlerts: true,
-    
-    // System Settings
-    autoBackup: true,
-    backupFrequency: 'daily',
-    dataRetention: '1year',
-    maintenanceMode: false,
-    
-    // Email Settings
-    smtpHost: 'smtp.gmail.com',
-    smtpPort: 587,
-    smtpUser: '',
-    smtpPassword: '',
-    fromEmail: 'noreply@company.com',
-    fromName: 'Contract Management System'
+  const handleCancelEdit = () => {
+    setLocalSettings(settingsData || defaultSettings);
+    setIsEditMode(false);
   };
 
   const systemInfo = {
@@ -203,47 +163,6 @@ const Settings = () => {
     totalUsers: systemStatsData?.totalUsers || 0,
     totalContracts: systemStatsData?.totalContracts || 0,
     lastUpdated: systemInfoData?.lastUpdated || new Date()
-  };
-
-  const handleSettingChange = (key, value) => {
-    const newSettings = {
-      ...settings,
-      [key]: value
-    };
-    updateSettingsMutation.mutate(newSettings);
-  };
-
-  const handleSaveSettings = () => {
-    updateSettingsMutation.mutate(settings);
-  };
-
-  const handleResetSettings = () => {
-    // Reset to default settings
-    const defaultSettings = {
-      language: 'vi',
-      timezone: 'Asia/Ho_Chi_Minh',
-      dateFormat: 'DD/MM/YYYY',
-      currency: 'VND',
-      theme: 'light',
-      primaryColor: '#7c3aed',
-      fontSize: 'medium',
-      compactMode: false,
-      emailNotifications: true,
-      pushNotifications: false,
-      contractAlerts: true,
-      systemAlerts: true,
-      autoBackup: true,
-      backupFrequency: 'daily',
-      dataRetention: '1year',
-      maintenanceMode: false,
-      smtpHost: 'smtp.gmail.com',
-      smtpPort: 587,
-      smtpUser: '',
-      smtpPassword: '',
-      fromEmail: 'noreply@company.com',
-      fromName: 'Contract Management System'
-    };
-    updateSettingsMutation.mutate(defaultSettings);
   };
 
   const systemInfoList = [
@@ -257,7 +176,7 @@ const Settings = () => {
     { label: 'Lần cập nhật cuối', value: new Date(systemInfo.lastUpdated).toLocaleDateString('vi-VN') }
   ];
 
-  if (settingsLoading) {
+  if (!localSettings) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
         <CircularProgress />
@@ -288,20 +207,51 @@ const Settings = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
-        Cài đặt hệ thống
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+          Cài đặt hệ thống
+        </Typography>
+        {
+          isEditMode ? (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<CancelIcon />}
+                onClick={handleCancelEdit}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveSettings}
+                disabled={updateSettingsMutation.isLoading}
+              >
+                {updateSettingsMutation.isLoading ? 'Đang lưu...' : 'Lưu cài đặt'}
+              </Button>
+            </Box>
+          ) : (
+            <Button
+              variant="contained"
+              startIcon={<SettingsIcon />}
+              onClick={() => setIsEditMode(true)}
+            >
+              Cài đặt
+            </Button>
+          )
+        }
+      </Box>
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
-          {/* General Settings */}
           <SettingSection title="Cài đặt chung" icon={<LanguageIcon />}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={!isEditMode}>
                   <InputLabel>Ngôn ngữ</InputLabel>
                   <Select
-                    value={settings.language}
+                    value={localSettings.language}
                     label="Ngôn ngữ"
                     onChange={(e) => handleSettingChange('language', e.target.value)}
                   >
@@ -311,10 +261,10 @@ const Settings = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={!isEditMode}>
                   <InputLabel>Múi giờ</InputLabel>
                   <Select
-                    value={settings.timezone}
+                    value={localSettings.timezone}
                     label="Múi giờ"
                     onChange={(e) => handleSettingChange('timezone', e.target.value)}
                   >
@@ -324,10 +274,10 @@ const Settings = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={!isEditMode}>
                   <InputLabel>Định dạng ngày</InputLabel>
                   <Select
-                    value={settings.dateFormat}
+                    value={localSettings.dateFormat}
                     label="Định dạng ngày"
                     onChange={(e) => handleSettingChange('dateFormat', e.target.value)}
                   >
@@ -338,10 +288,10 @@ const Settings = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={!isEditMode}>
                   <InputLabel>Tiền tệ</InputLabel>
                   <Select
-                    value={settings.currency}
+                    value={localSettings.currency}
                     label="Tiền tệ"
                     onChange={(e) => handleSettingChange('currency', e.target.value)}
                   >
@@ -354,14 +304,13 @@ const Settings = () => {
             </Grid>
           </SettingSection>
 
-          {/* Appearance Settings */}
           <SettingSection title="Giao diện" icon={<PaletteIcon />}>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={!isEditMode}>
                   <InputLabel>Chủ đề</InputLabel>
                   <Select
-                    value={settings.theme}
+                    value={localSettings.theme}
                     label="Chủ đề"
                     onChange={(e) => handleSettingChange('theme', e.target.value)}
                   >
@@ -376,15 +325,22 @@ const Settings = () => {
                   fullWidth
                   label="Màu chủ đạo"
                   type="color"
-                  value={settings.primaryColor}
+                  value={localSettings.primaryColor}
                   onChange={(e) => handleSettingChange('primaryColor', e.target.value)}
+                  disabled={!isEditMode}
+                  sx={{ 
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      cursor: 'not-allowed',
+                      backgroundColor: 'action.disabledBackground'
+                    },
+                  }}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
+                <FormControl fullWidth disabled={!isEditMode}>
                   <InputLabel>Cỡ chữ</InputLabel>
                   <Select
-                    value={settings.fontSize}
+                    value={localSettings.fontSize}
                     label="Cỡ chữ"
                     onChange={(e) => handleSettingChange('fontSize', e.target.value)}
                   >
@@ -398,8 +354,9 @@ const Settings = () => {
                 <FormControlLabel
                   control={
                     <Switch
-                      checked={settings.compactMode}
+                      checked={localSettings.compactMode}
                       onChange={(e) => handleSettingChange('compactMode', e.target.checked)}
+                      disabled={!isEditMode}
                     />
                   }
                   label="Chế độ compact"
@@ -408,193 +365,8 @@ const Settings = () => {
             </Grid>
           </SettingSection>
 
-          {/* Notification Settings */}
-          <SettingSection title="Thông báo" icon={<NotificationsIcon />}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.emailNotifications}
-                      onChange={(e) => handleSettingChange('emailNotifications', e.target.checked)}
-                    />
-                  }
-                  label="Thông báo email"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.pushNotifications}
-                      onChange={(e) => handleSettingChange('pushNotifications', e.target.checked)}
-                    />
-                  }
-                  label="Thông báo push"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.contractAlerts}
-                      onChange={(e) => handleSettingChange('contractAlerts', e.target.checked)}
-                    />
-                  }
-                  label="Cảnh báo hợp đồng"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.systemAlerts}
-                      onChange={(e) => handleSettingChange('systemAlerts', e.target.checked)}
-                    />
-                  }
-                  label="Cảnh báo hệ thống"
-                />
-              </Grid>
-            </Grid>
-          </SettingSection>
-
-          {/* System Settings */}
-          <SettingSection title="Hệ thống" icon={<StorageIcon />}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.autoBackup}
-                      onChange={(e) => handleSettingChange('autoBackup', e.target.checked)}
-                    />
-                  }
-                  label="Sao lưu tự động"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Tần suất sao lưu</InputLabel>
-                  <Select
-                    value={settings.backupFrequency}
-                    label="Tần suất sao lưu"
-                    onChange={(e) => handleSettingChange('backupFrequency', e.target.value)}
-                  >
-                    <MenuItem value="daily">Hàng ngày</MenuItem>
-                    <MenuItem value="weekly">Hàng tuần</MenuItem>
-                    <MenuItem value="monthly">Hàng tháng</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Lưu trữ dữ liệu</InputLabel>
-                  <Select
-                    value={settings.dataRetention}
-                    label="Lưu trữ dữ liệu"
-                    onChange={(e) => handleSettingChange('dataRetention', e.target.value)}
-                  >
-                    <MenuItem value="6months">6 tháng</MenuItem>
-                    <MenuItem value="1year">1 năm</MenuItem>
-                    <MenuItem value="2years">2 năm</MenuItem>
-                    <MenuItem value="forever">Vĩnh viễn</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={settings.maintenanceMode}
-                      onChange={(e) => handleSettingChange('maintenanceMode', e.g.target.checked)}
-                    />
-                  }
-                  label="Chế độ bảo trì"
-                />
-              </Grid>
-            </Grid>
-          </SettingSection>
-
-          {/* Email Settings */}
-          <SettingSection title="Cài đặt Email" icon={<EmailIcon />}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="SMTP Host"
-                  value={settings.smtpHost}
-                  onChange={(e) => handleSettingChange('smtpHost', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="SMTP Port"
-                  type="number"
-                  value={settings.smtpPort}
-                  onChange={(e) => handleSettingChange('smtpPort', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="SMTP User"
-                  value={settings.smtpUser}
-                  onChange={(e) => handleSettingChange('smtpUser', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="SMTP Password"
-                  type="password"
-                  value={settings.smtpPassword}
-                  onChange={(e) => handleSettingChange('smtpPassword', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email gửi"
-                  value={settings.fromEmail}
-                  onChange={(e) => handleSettingChange('fromEmail', e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Tên người gửi"
-                  value={settings.fromName}
-                  onChange={(e) => handleSettingChange('fromName', e.target.value)}
-                />
-              </Grid>
-            </Grid>
-          </SettingSection>
-
-          {/* Action Buttons */}
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<SaveIcon />}
-                  onClick={handleSaveSettings}
-                >
-                  Lưu cài đặt
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<RefreshIcon />}
-                  onClick={handleResetSettings}
-                >
-                  Khôi phục mặc định
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
         </Grid>
 
-        {/* System Information */}
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
@@ -617,44 +389,6 @@ const Settings = () => {
                   </React.Fragment>
                 ))}
               </List>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card sx={{ mt: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
-                Thao tác nhanh
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<BackupIcon />}
-                  fullWidth
-                  onClick={() => createBackupMutation.mutate()}
-                  disabled={createBackupMutation.isLoading}
-                >
-                  {createBackupMutation.isLoading ? 'Đang tạo...' : 'Tạo sao lưu ngay'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<UpdateIcon />}
-                  fullWidth
-                  onClick={() => checkUpdatesMutation.mutate()}
-                  disabled={checkUpdatesMutation.isLoading}
-                >
-                  {checkUpdatesMutation.isLoading ? 'Đang kiểm tra...' : 'Kiểm tra cập nhật'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<StorageIcon />}
-                  fullWidth
-                  onClick={() => clearCacheMutation.mutate()}
-                  disabled={clearCacheMutation.isLoading}
-                >
-                  {clearCacheMutation.isLoading ? 'Đang dọn dẹp...' : 'Dọn dẹp cache'}
-                </Button>
-              </Box>
             </CardContent>
           </Card>
         </Grid>

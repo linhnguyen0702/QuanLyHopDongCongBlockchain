@@ -24,43 +24,31 @@ import { useQuery } from "react-query";
 import { contractAPI } from "../../services/api";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import BlockchainInfo from "../../components/Blockchain/BlockchainInfo";
+import { useSettings } from "../../contexts/SettingsContext"; // Import the hook
 
 const StatusChip = ({ status }) => {
+  // ... (rest of the component is unchanged)
   const getStatusColor = (status) => {
     switch (status) {
-      case "draft":
-        return "default";
-      case "pending":
-        return "warning";
-      case "approved":
-        return "success";
-      case "active":
-        return "info";
-      case "completed":
-        return "primary";
-      case "cancelled":
-        return "error";
-      default:
-        return "default";
+      case "draft": return "default";
+      case "pending": return "warning";
+      case "approved": return "success";
+      case "active": return "info";
+      case "completed": return "primary";
+      case "cancelled": return "error";
+      default: return "default";
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case "draft":
-        return "Nháp";
-      case "pending":
-        return "Chờ duyệt";
-      case "approved":
-        return "Đã duyệt";
-      case "active":
-        return "Đang thực hiện";
-      case "completed":
-        return "Hoàn thành";
-      case "cancelled":
-        return "Hủy bỏ";
-      default:
-        return status;
+      case "draft": return "Nháp";
+      case "pending": return "Chờ duyệt";
+      case "approved": return "Đã duyệt";
+      case "active": return "Đang thực hiện";
+      case "completed": return "Hoàn thành";
+      case "cancelled": return "Hủy bỏ";
+      default: return status;
     }
   };
 
@@ -87,6 +75,7 @@ const StatusChip = ({ status }) => {
 const ContractDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { formatDate, formatCurrency } = useSettings(); // Use the global formatters
 
   const {
     data: contractData,
@@ -104,17 +93,6 @@ const ContractDetail = () => {
   if (!contract) {
     return <div>Contract not found</div>;
   }
-
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(value);
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("vi-VN");
-  };
 
   return (
     <Box>
@@ -201,7 +179,7 @@ const ContractDetail = () => {
                     Giá trị hợp đồng
                   </Typography>
                   <Typography variant="body1" sx={{ fontWeight: "medium" }}>
-                    {formatCurrency(contract.contractValue)} {contract.currency}
+                    {formatCurrency(contract.contractValue)}
                   </Typography>
                 </Grid>
 
@@ -298,12 +276,7 @@ const ContractDetail = () => {
                         {historyItem.action === "activated" && (
                           <ScheduleIcon color="info" />
                         )}
-                        {![
-                          "created",
-                          "approved",
-                          "updated",
-                          "activated",
-                        ].includes(historyItem.action) && (
+                        {!["created", "approved", "updated", "activated"].includes(historyItem.action) && (
                           <CheckCircleIcon color="action" />
                         )}
                       </ListItemIcon>

@@ -8,13 +8,10 @@ import {
   IconButton,
   Tooltip,
   Stack,
-  Link,
   Divider,
-  Button,
 } from "@mui/material";
 import {
   CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
   OpenInNew as OpenInNewIcon,
   ContentCopy as ContentCopyIcon,
   Verified as VerifiedIcon,
@@ -23,7 +20,7 @@ import toast from "react-hot-toast";
 import { useBlockchain } from "../../contexts/BlockchainContext";
 
 const BlockchainInfo = ({ contract }) => {
-  const { viewTransactionOnExplorer, formatAddress } = useBlockchain();
+  const { viewTransactionOnExplorer } = useBlockchain();
 
   if (!contract?.blockchain?.enabled) {
     return null;

@@ -63,6 +63,7 @@ const contractSchema = new mongoose.Schema(
         "active",
         "completed",
         "cancelled",
+        "deleted" // Added deleted status for soft delete
       ],
       default: "draft",
     },
@@ -155,6 +156,7 @@ const contractSchema = new mongoose.Schema(
             "activated",
             "completed",
             "cancelled",
+            "deleted"
           ],
         },
         performedBy: {
@@ -218,38 +220,6 @@ contractSchema.virtual("formattedValue").get(function () {
   return formatter.format(this.contractValue);
 });
 
-// Pre-save middleware to add history entry
-contractSchema.pre("save", function (next) {
-  if (this.isNew) {
-    this.history.push({
-      action: "created",
-      performedBy: this.createdBy,
-      comment: "Contract created",
-    });
-  } else if (this.isModified()) {
-    const changes = {};
-    const modifiedFields = this.modifiedPaths();
-
-    modifiedFields.forEach((field) => {
-      if (field !== "history" && field !== "updatedAt") {
-        changes[field] = {
-          from: this.get(field, null, { getters: false }),
-          to: this.get(field),
-        };
-      }
-    });
-
-    this.history.push({
-      action: "updated",
-      performedBy: this.createdBy,
-      changes: changes,
-      comment: "Contract updated",
-    });
-  }
-
-  next();
-});
-
 // Static method to find contracts by status
 contractSchema.statics.findByStatus = function (status) {
   return this.find({ status });
@@ -281,3 +251,4 @@ contractSchema.statics.findExpiring = function (days = 30) {
 };
 
 module.exports = mongoose.model("Contract", contractSchema);
+

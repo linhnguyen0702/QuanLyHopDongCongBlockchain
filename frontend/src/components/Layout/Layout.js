@@ -38,50 +38,53 @@ import {
   Approval as ApprovalIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 import { useAuth } from "../../contexts/AuthContext";
 import WalletConnect from "../Blockchain/WalletConnect";
 
 const drawerWidth = 280;
 
-const menuItems = [
-  { text: "Tổng quan", icon: <DashboardIcon />, path: "/dashboard" },
-  { text: "Hợp đồng", icon: <ContractIcon />, path: "/contracts" },
-  {
-    text: "Phê duyệt",
-    icon: <ApprovalIcon />,
-    path: "/approval",
-    managerOnly: true,
-  },
-  { text: "Nhà thầu", icon: <BusinessIcon />, path: "/contractors" },
-  {
-    text: "Báo cáo",
-    icon: <ReportIcon />,
-    path: "/reports",
-    managerOnly: true,
-  },
-  {
-    text: "Audit Trail",
-    icon: <HistoryIcon />,
-    path: "/audit",
-    managerOnly: true,
-  },
-  { text: "Người dùng", icon: <PeopleIcon />, path: "/users", adminOnly: true },
-  {
-    text: "Bảo mật",
-    icon: <SecurityIcon />,
-    path: "/security",
-    adminOnly: true,
-  },
-  { text: "Cài đặt", icon: <SettingsIcon />, path: "/settings" },
-];
-
 const Layout = ({ children }) => {
+  const { t } = useTranslation(); // Initialize translation hook
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isAdmin, isManager } = useAuth();
+
+  // Move menuItems inside the component to access the 't' function
+  const menuItems = [
+    { key: "sidebar.dashboard", icon: <DashboardIcon />, path: "/dashboard" },
+    { key: "sidebar.contracts", icon: <ContractIcon />, path: "/contracts" },
+    {
+      key: "sidebar.approval",
+      icon: <ApprovalIcon />,
+      path: "/approval",
+      managerOnly: true,
+    },
+    { key: "sidebar.contractors", icon: <BusinessIcon />, path: "/contractors" },
+    {
+      key: "sidebar.reports",
+      icon: <ReportIcon />,
+      path: "/reports",
+      managerOnly: true,
+    },
+    {
+      key: "sidebar.audit",
+      icon: <HistoryIcon />,
+      path: "/audit",
+      managerOnly: true,
+    },
+    { key: "sidebar.users", icon: <PeopleIcon />, path: "/users", adminOnly: true },
+    {
+      key: "sidebar.security",
+      icon: <SecurityIcon />,
+      path: "/security",
+      adminOnly: true,
+    },
+    { key: "sidebar.settings", icon: <SettingsIcon />, path: "/settings" },
+  ];
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -219,7 +222,7 @@ const Layout = ({ children }) => {
       <Box sx={{ flexGrow: 1, overflowY: "auto", mt: 1 }}>
         <List sx={{ px: collapsed ? 0.5 : 1, py: 1 }}>
           {filteredMenuItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+            <ListItem key={item.key} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
                 selected={location.pathname === item.path}
                 onClick={() => handleNavigation(item.path)}
@@ -247,7 +250,7 @@ const Layout = ({ children }) => {
                   {item.icon}
                 </ListItemIcon>
                 {!collapsed && (
-                  <ListItemText primary={item.text} sx={{ ml: 2 }} />
+                  <ListItemText primary={t(item.key)} sx={{ ml: 2 }} />
                 )}
               </ListItemButton>
             </ListItem>

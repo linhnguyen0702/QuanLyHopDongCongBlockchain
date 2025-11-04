@@ -31,7 +31,7 @@ const StatCard = ({ title, value, icon, color = 'primary', subtitle, trend }) =>
     <CardContent sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Box>
-          <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
             {value}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>

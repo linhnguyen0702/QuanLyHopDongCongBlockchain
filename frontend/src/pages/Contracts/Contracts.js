@@ -132,16 +132,22 @@ const Contracts = () => {
     }
   );
 
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setSelectedContract(null);
+  };
+
   const deleteContractMutation = useMutation(
     (contractId) => contractAPI.deleteContract(contractId),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('contracts');
         toast.success('Xóa hợp đồng thành công!');
-        setDeleteDialogOpen(false);
+        handleCloseDeleteDialog();
       },
       onError: (error) => {
         toast.error(error.response?.data?.message || 'Xóa hợp đồng thất bại!');
+        handleCloseDeleteDialog();
       },
     }
   );
@@ -157,22 +163,28 @@ const Contracts = () => {
   };
 
   const handleView = () => {
-    navigate(`/contracts/${selectedContract._id}`);
+    if (selectedContract) {
+      navigate(`/contracts/${selectedContract._id}`);
+    }
     handleMenuClose();
   };
 
   const handleEdit = () => {
-    navigate(`/contracts/${selectedContract._id}/edit`);
+    if (selectedContract) {
+      navigate(`/contracts/${selectedContract._id}/edit`);
+    }
     handleMenuClose();
   };
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
-    handleMenuClose();
+    setAnchorEl(null); // Close menu, but keep selectedContract
   };
 
   const confirmDelete = () => {
-    deleteContractMutation.mutate(selectedContract._id);
+    if (selectedContract) {
+      deleteContractMutation.mutate(selectedContract._id);
+    }
   };
 
   const handleApprove = () => {
@@ -334,7 +346,7 @@ const Contracts = () => {
       </Menu>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
         <DialogTitle>Xác nhận xóa</DialogTitle>
         <DialogContent>
           <Typography>
@@ -343,7 +355,7 @@ const Contracts = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Hủy</Button>
+          <Button onClick={handleCloseDeleteDialog}>Hủy</Button>
           <Button
             onClick={confirmDelete}
             color="error"
