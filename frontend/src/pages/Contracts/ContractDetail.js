@@ -30,25 +30,39 @@ const StatusChip = ({ status }) => {
   // ... (rest of the component is unchanged)
   const getStatusColor = (status) => {
     switch (status) {
-      case "draft": return "default";
-      case "pending": return "warning";
-      case "approved": return "success";
-      case "active": return "info";
-      case "completed": return "primary";
-      case "cancelled": return "error";
-      default: return "default";
+      case "draft":
+        return "default";
+      case "pending":
+        return "warning";
+      case "approved":
+        return "success";
+      case "active":
+        return "info";
+      case "completed":
+        return "primary";
+      case "cancelled":
+        return "error";
+      default:
+        return "default";
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case "draft": return "Nháp";
-      case "pending": return "Chờ duyệt";
-      case "approved": return "Đã duyệt";
-      case "active": return "Đang thực hiện";
-      case "completed": return "Hoàn thành";
-      case "cancelled": return "Hủy bỏ";
-      default: return status;
+      case "draft":
+        return "Nháp";
+      case "pending":
+        return "Chờ duyệt";
+      case "approved":
+        return "Đã duyệt";
+      case "active":
+        return "Đang thực hiện";
+      case "completed":
+        return "Hoàn thành";
+      case "cancelled":
+        return "Hủy bỏ";
+      default:
+        return status;
     }
   };
 
@@ -247,7 +261,7 @@ const ContractDetail = () => {
           </Card>
         </Grid>
 
-        {/* Contract History */}
+        {/* Contract History - Moved up to be on same row */}
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
@@ -276,7 +290,12 @@ const ContractDetail = () => {
                         {historyItem.action === "activated" && (
                           <ScheduleIcon color="info" />
                         )}
-                        {!["created", "approved", "updated", "activated"].includes(historyItem.action) && (
+                        {![
+                          "created",
+                          "approved",
+                          "updated",
+                          "activated",
+                        ].includes(historyItem.action) && (
                           <CheckCircleIcon color="action" />
                         )}
                       </ListItemIcon>
@@ -295,6 +314,67 @@ const ContractDetail = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Approval Progress - Moved down after history */}
+        {contract.status === "pending" && (
+          <Grid item xs={12}>
+            <Card sx={{ backgroundColor: "#fff8e1" }}>
+              <CardContent>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ fontWeight: "bold", color: "#f57c00" }}
+                >
+                  Tiến trình phê duyệt
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
+                >
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    Trạng thái: {contract.approvals?.length || 0}/2 phê duyệt
+                  </Typography>
+                  <Chip
+                    label={
+                      contract.approvals?.length >= 2 ? "Hoàn tất" : "Đang chờ"
+                    }
+                    color={
+                      contract.approvals?.length >= 2 ? "success" : "warning"
+                    }
+                    size="small"
+                  />
+                </Box>
+
+                {contract.approvals && contract.approvals.length > 0 ? (
+                  <List dense>
+                    {contract.approvals.map((approval, index) => (
+                      <ListItem key={index}>
+                        <ListItemIcon>
+                          <CheckCircleIcon color="success" />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={`Phê duyệt lần ${index + 1}: ${
+                            approval.approvedBy?.fullName ||
+                            approval.approvedBy?.username ||
+                            "N/A"
+                          }`}
+                          secondary={`${formatDate(approval.approvedAt)}${
+                            approval.comment ? ` - ${approval.comment}` : ""
+                          }`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Chưa có phê duyệt nào
+                  </Typography>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
 
         {/* Blockchain Information */}
         <Grid item xs={12}>

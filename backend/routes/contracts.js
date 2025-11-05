@@ -3,7 +3,7 @@ const Contract = require("../models/Contract");
 const { validate, schemas } = require("../middleware/validation");
 const { authenticateToken, requireManager } = require("../middleware/auth");
 const blockchainService = require("../services/blockchainService");
-const AuditLog = require('../models/AuditLog');
+const AuditLog = require("../models/AuditLog");
 const router = express.Router();
 
 // @route   GET /api/contracts
@@ -37,7 +37,7 @@ router.get(
       if (status) {
         filter.status = status;
       } else {
-        filter.status = { $ne: 'deleted' };
+        filter.status = { $ne: "deleted" };
       }
       if (contractType) filter.contractType = contractType;
       if (department) filter.department = department;
@@ -50,6 +50,7 @@ router.get(
       const contracts = await Contract.find(filter)
         .populate("createdBy", "username fullName email")
         .populate("approvedBy", "username fullName email")
+        .populate("approvals.approvedBy", "username fullName email")
         .sort(sort)
         .skip(skip)
         .limit(parseInt(limit));
@@ -86,6 +87,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
     const contract = await Contract.findById(req.params.id)
       .populate("createdBy", "username fullName email")
       .populate("approvedBy", "username fullName email")
+      .populate("approvals.approvedBy", "username fullName email")
       .populate("history.performedBy", "username fullName email");
 
     if (!contract) {
@@ -125,18 +127,18 @@ router.post(
       const contract = new Contract(contractData);
 
       contract.history.push({
-        action: 'created',
+        action: "created",
         performedBy: req.user._id,
-        comment: 'Hợp đồng đã được tạo.'
+        comment: "Hợp đồng đã được tạo.",
       });
 
       await AuditLog.createLog({
-        type: 'contract',
-        action: 'created',
+        type: "contract",
+        action: "created",
         description: `Hợp đồng "${contract.contractName}" đã được tạo.`,
         performedBy: req.user._id,
         resourceId: contract._id,
-        resourceType: 'Contract'
+        resourceType: "Contract",
       });
 
       await contract.save();
@@ -242,26 +244,26 @@ router.put(
       }
 
       const originalValues = {};
-      Object.keys(updateData).forEach(key => {
+      Object.keys(updateData).forEach((key) => {
         originalValues[key] = contractToUpdate[key];
       });
 
       Object.assign(contractToUpdate, updateData);
 
       contractToUpdate.history.push({
-        action: 'updated',
+        action: "updated",
         performedBy: req.user._id,
-        comment: 'Hợp đồng đã được cập nhật.',
-        changes: { from: originalValues, to: updateData }
+        comment: "Hợp đồng đã được cập nhật.",
+        changes: { from: originalValues, to: updateData },
       });
 
       await AuditLog.createLog({
-        type: 'contract',
-        action: 'updated',
+        type: "contract",
+        action: "updated",
         description: `Hợp đồng "${contractToUpdate.contractName}" đã được cập nhật.`,
         performedBy: req.user._id,
         resourceId: contractToUpdate._id,
-        resourceType: 'Contract'
+        resourceType: "Contract",
       });
 
       const savedContract = await contractToUpdate.save();
@@ -279,55 +281,79 @@ router.put(
       // Sync with blockchain asynchronously (non-blocking)
       if (blockchainService.isEnabled()) {
         const contractDataForChain = {
-            contractNumber: updatedContract.contractNumber,
-            contractName: updatedContract.contractName,
-            contractor: updatedContract.contractor,
-            contractValue: updatedContract.contractValue,
-            currency: updatedContract.currency,
-            startDate: updatedContract.startDate,
-            endDate: updatedContract.endDate,
-            contractType: updatedContract.contractType,
-            department: updatedContract.department,
-            responsiblePerson: updatedContract.responsiblePerson,
+          contractNumber: updatedContract.contractNumber,
+          contractName: updatedContract.contractName,
+          contractor: updatedContract.contractor,
+          contractValue: updatedContract.contractValue,
+          currency: updatedContract.currency,
+          startDate: updatedContract.startDate,
+          endDate: updatedContract.endDate,
+          contractType: updatedContract.contractType,
+          department: updatedContract.department,
+          responsiblePerson: updatedContract.responsiblePerson,
         };
 
         // If contract is not yet on the blockchain, create it. Otherwise, update it.
-        if (!updatedContract.blockchain || !updatedContract.blockchain.enabled) {
-            console.log(`Creating contract ${updatedContract.contractNumber} on blockchain for the first time.`);
-            blockchainService.createContract(contractDataForChain)
-                .then(async (blockchainResult) => {
-                    if (blockchainResult) {
-                        updatedContract.blockchain = {
-                            enabled: true,
-                            transactionHash: blockchainResult.transactionHash,
-                            blockNumber: blockchainResult.blockNumber,
-                            contractAddress: blockchainResult.contractAddress,
-                            network: blockchainResult.network,
-                            createdOnChain: new Date(),
-                            lastSyncedAt: new Date(),
-                        };
-                        await updatedContract.save();
-                        console.log(`✅ Blockchain CREATION sync completed for ${updatedContract.contractNumber}`);
-                    }
-                })
-                .catch((blockchainError) => {
-                    console.error("❌ Blockchain creation error (non-critical):", blockchainError);
-                });
+        if (
+          !updatedContract.blockchain ||
+          !updatedContract.blockchain.enabled
+        ) {
+          console.log(
+            `Creating contract ${updatedContract.contractNumber} on blockchain for the first time.`
+          );
+          blockchainService
+            .createContract(contractDataForChain)
+            .then(async (blockchainResult) => {
+              if (blockchainResult) {
+                updatedContract.blockchain = {
+                  enabled: true,
+                  transactionHash: blockchainResult.transactionHash,
+                  blockNumber: blockchainResult.blockNumber,
+                  contractAddress: blockchainResult.contractAddress,
+                  network: blockchainResult.network,
+                  createdOnChain: new Date(),
+                  lastSyncedAt: new Date(),
+                };
+                await updatedContract.save();
+                console.log(
+                  `✅ Blockchain CREATION sync completed for ${updatedContract.contractNumber}`
+                );
+              }
+            })
+            .catch((blockchainError) => {
+              console.error(
+                "❌ Blockchain creation error (non-critical):",
+                blockchainError
+              );
+            });
         } else {
-            console.log(`Updating contract ${updatedContract.contractNumber} on blockchain.`);
-            blockchainService.updateContract(updatedContract.contractNumber, contractDataForChain)
-                .then(async (blockchainResult) => {
-                    if (blockchainResult && blockchainResult.success) {
-                        updatedContract.blockchain.transactionHash = blockchainResult.transactionHash;
-                        updatedContract.blockchain.blockNumber = blockchainResult.blockNumber;
-                        updatedContract.blockchain.lastSyncedAt = new Date();
-                        await updatedContract.save();
-                        console.log(`✅ Blockchain UPDATE sync completed for ${updatedContract.contractNumber}`);
-                    }
-                })
-                .catch((blockchainError) => {
-                    console.error("❌ Blockchain update error (non-critical):", blockchainError);
-                });
+          console.log(
+            `Updating contract ${updatedContract.contractNumber} on blockchain.`
+          );
+          blockchainService
+            .updateContract(
+              updatedContract.contractNumber,
+              contractDataForChain
+            )
+            .then(async (blockchainResult) => {
+              if (blockchainResult && blockchainResult.success) {
+                updatedContract.blockchain.transactionHash =
+                  blockchainResult.transactionHash;
+                updatedContract.blockchain.blockNumber =
+                  blockchainResult.blockNumber;
+                updatedContract.blockchain.lastSyncedAt = new Date();
+                await updatedContract.save();
+                console.log(
+                  `✅ Blockchain UPDATE sync completed for ${updatedContract.contractNumber}`
+                );
+              }
+            })
+            .catch((blockchainError) => {
+              console.error(
+                "❌ Blockchain update error (non-critical):",
+                blockchainError
+              );
+            });
         }
       }
     } catch (error) {
@@ -341,7 +367,7 @@ router.put(
 );
 
 // @route   POST /api/contracts/:id/approve
-// @desc    Approve contract
+// @desc    Approve contract (requires 2 approvals)
 // @access  Private (Manager/Admin only)
 router.post(
   "/:id/approve",
@@ -352,43 +378,110 @@ router.post(
       const contract = await Contract.findById(req.params.id);
 
       if (!contract) {
-        return res.status(404).json({ status: "error", message: "Không tìm thấy hợp đồng" });
+        return res
+          .status(404)
+          .json({ status: "error", message: "Không tìm thấy hợp đồng" });
       }
       if (contract.status !== "pending") {
-        return res.status(400).json({ status: "error", message: "Chỉ có hợp đồng chờ phê duyệt mới được phê duyệt" });
+        return res
+          .status(400)
+          .json({
+            status: "error",
+            message: "Chỉ có hợp đồng chờ phê duyệt mới được phê duyệt",
+          });
       }
 
-      contract.status = "approved";
-      contract.approvedBy = req.user._id;
-      contract.approvedAt = new Date();
+      // Check if user already approved
+      const alreadyApproved = contract.approvals.some(
+        (approval) => approval.approvedBy.toString() === req.user._id.toString()
+      );
 
-      contract.history.push({
-        action: 'approved',
-        performedBy: req.user._id,
-        comment: req.body.comment || 'Hợp đồng đã được phê duyệt.'
+      if (alreadyApproved) {
+        return res.status(400).json({
+          status: "error",
+          message: "Bạn đã phê duyệt hợp đồng này rồi",
+        });
+      }
+
+      // Add approval
+      contract.approvals.push({
+        approvedBy: req.user._id,
+        approvedAt: new Date(),
+        comment: req.body.comment || "Đã phê duyệt",
       });
 
-      await AuditLog.createLog({
-        type: 'contract',
-        action: 'approved',
-        description: `Hợp đồng "${contract.contractName}" đã được phê duyệt.`,
-        details: req.body.comment || 'Không có bình luận',
-        performedBy: req.user._id,
-        resourceId: contract._id,
-        resourceType: 'Contract'
-      });
+      // Check if we have 2 approvals now
+      const approvalCount = contract.approvals.length;
+      let message = "";
+      let historyAction = "";
+
+      if (approvalCount >= 2) {
+        // Second approval - change status to approved
+        contract.status = "approved";
+        contract.approvedBy = req.user._id; // Last approver
+        contract.approvedAt = new Date();
+        message = "Hợp đồng đã được phê duyệt hoàn tất (2/2)";
+        historyAction = "approved";
+
+        contract.history.push({
+          action: "approved",
+          performedBy: req.user._id,
+          comment:
+            req.body.comment || "Hợp đồng đã được phê duyệt đầy đủ (2/2).",
+        });
+
+        await AuditLog.createLog({
+          type: "contract",
+          action: "approved",
+          description: `Hợp đồng "${contract.contractName}" đã được phê duyệt hoàn tất (2/2).`,
+          details: req.body.comment || "Không có bình luận",
+          performedBy: req.user._id,
+          resourceId: contract._id,
+          resourceType: "Contract",
+        });
+      } else {
+        // First approval - keep status as pending
+        message = `Hợp đồng đã được phê duyệt lần ${approvalCount}/2. Cần thêm 1 phê duyệt nữa.`;
+        historyAction = "partial_approved";
+
+        contract.history.push({
+          action: "updated",
+          performedBy: req.user._id,
+          comment: req.body.comment || `Phê duyệt lần ${approvalCount}/2.`,
+        });
+
+        await AuditLog.createLog({
+          type: "contract",
+          action: "updated",
+          description: `Hợp đồng "${contract.contractName}" đã được phê duyệt lần ${approvalCount}/2.`,
+          details: req.body.comment || "Không có bình luận",
+          performedBy: req.user._id,
+          resourceId: contract._id,
+          resourceType: "Contract",
+        });
+      }
 
       await contract.save();
-      await contract.populate("approvedBy", "username fullName email");
+      await contract.populate([
+        { path: "approvals.approvedBy", select: "username fullName email" },
+        { path: "approvedBy", select: "username fullName email" },
+      ]);
 
       res.json({
         status: "success",
-        message: "Hợp đồng đã được phê duyệt thành công",
-        data: { contract },
+        message: message,
+        data: {
+          contract,
+          approvalCount: approvalCount,
+          requiredApprovals: 2,
+          isFullyApproved: approvalCount >= 2,
+        },
       });
     } catch (error) {
       console.error("Lỗi khi phê duyệt hợp đồng:", error);
-      res.status(500).json({ status: "error", message: "Không thể phê duyệt hợp đồng" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Không thể phê duyệt hợp đồng" });
     }
   }
 );
@@ -405,10 +498,17 @@ router.post(
       const contract = await Contract.findById(req.params.id);
 
       if (!contract) {
-        return res.status(404).json({ status: "error", message: "Không tìm thấy hợp đồng" });
+        return res
+          .status(404)
+          .json({ status: "error", message: "Không tìm thấy hợp đồng" });
       }
       if (contract.status !== "pending") {
-        return res.status(400).json({ status: "error", message: "Chỉ có hợp đồng chờ phê duyệt mới được từ chối" });
+        return res
+          .status(400)
+          .json({
+            status: "error",
+            message: "Chỉ có hợp đồng chờ phê duyệt mới được từ chối",
+          });
       }
 
       contract.status = "rejected";
@@ -416,19 +516,19 @@ router.post(
       contract.rejectedAt = new Date();
 
       contract.history.push({
-        action: 'rejected',
+        action: "rejected",
         performedBy: req.user._id,
-        comment: req.body.comment || 'Hợp đồng đã bị từ chối.'
+        comment: req.body.comment || "Hợp đồng đã bị từ chối.",
       });
 
       await AuditLog.createLog({
-        type: 'contract',
-        action: 'rejected',
+        type: "contract",
+        action: "rejected",
         description: `Hợp đồng "${contract.contractName}" đã bị từ chối.`,
-        details: req.body.comment || 'Không có bình luận',
+        details: req.body.comment || "Không có bình luận",
         performedBy: req.user._id,
         resourceId: contract._id,
-        resourceType: 'Contract'
+        resourceType: "Contract",
       });
 
       await contract.save();
@@ -441,7 +541,9 @@ router.post(
       });
     } catch (error) {
       console.error("Lỗi khi từ chối hợp đồng:", error);
-      res.status(500).json({ status: "error", message: "Không thể từ chối hợp đồng" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Không thể từ chối hợp đồng" });
     }
   }
 );
@@ -458,28 +560,35 @@ router.post(
       const contract = await Contract.findById(req.params.id);
 
       if (!contract) {
-        return res.status(404).json({ status: "error", message: "Không tìm thấy hợp đồng" });
+        return res
+          .status(404)
+          .json({ status: "error", message: "Không tìm thấy hợp đồng" });
       }
       if (contract.status !== "approved") {
-        return res.status(400).json({ status: "error", message: "Chỉ có hợp đồng đã được phê duyệt mới được kích hoạt" });
+        return res
+          .status(400)
+          .json({
+            status: "error",
+            message: "Chỉ có hợp đồng đã được phê duyệt mới được kích hoạt",
+          });
       }
 
       contract.status = "active";
 
       contract.history.push({
-        action: 'activated',
+        action: "activated",
         performedBy: req.user._id,
-        comment: req.body.comment || 'Hợp đồng đã được kích hoạt.'
+        comment: req.body.comment || "Hợp đồng đã được kích hoạt.",
       });
 
       await AuditLog.createLog({
-        type: 'contract',
-        action: 'activated',
+        type: "contract",
+        action: "activated",
         description: `Hợp đồng "${contract.contractName}" đã được kích hoạt.`,
-        details: req.body.comment || 'Không có bình luận',
+        details: req.body.comment || "Không có bình luận",
         performedBy: req.user._id,
         resourceId: contract._id,
-        resourceType: 'Contract'
+        resourceType: "Contract",
       });
 
       await contract.save();
@@ -491,7 +600,9 @@ router.post(
       });
     } catch (error) {
       console.error("Lỗi khi kích hoạt hợp đồng:", error);
-      res.status(500).json({ status: "error", message: "Không thể kích hoạt hợp đồng" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Không thể kích hoạt hợp đồng" });
     }
   }
 );
@@ -504,38 +615,43 @@ router.delete("/:id", authenticateToken, async (req, res) => {
     const contract = await Contract.findById(req.params.id);
 
     if (!contract) {
-      return res.status(404).json({ status: "error", message: "Không tìm thấy hợp đồng" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "Không tìm thấy hợp đồng" });
     }
 
     if (
       contract.createdBy.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
-      return res.status(403).json({ status: "error", message: "Không được phép xóa hợp đồng này" });
+      return res
+        .status(403)
+        .json({ status: "error", message: "Không được phép xóa hợp đồng này" });
     }
 
     if (["approved", "active", "completed"].includes(contract.status)) {
       return res.status(400).json({
         status: "error",
-        message: "Không thể xóa hợp đồng đã được phê duyệt/đang hoạt động/đã hoàn thành",
+        message:
+          "Không thể xóa hợp đồng đã được phê duyệt/đang hoạt động/đã hoàn thành",
       });
     }
 
     contract.status = "deleted";
 
     contract.history.push({
-      action: 'deleted',
+      action: "deleted",
       performedBy: req.user._id,
-      comment: 'Hợp đồng đã bị xóa.'
+      comment: "Hợp đồng đã bị xóa.",
     });
 
     await AuditLog.createLog({
-      type: 'contract',
-      action: 'deleted',
+      type: "contract",
+      action: "deleted",
       description: `Hợp đồng "${contract.contractName}" đã bị xóa.`,
       performedBy: req.user._id,
       resourceId: contract._id,
-      resourceType: 'Contract'
+      resourceType: "Contract",
     });
 
     await contract.save();
@@ -546,7 +662,9 @@ router.delete("/:id", authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi xóa hợp đồng:", error);
-    res.status(500).json({ status: "error", message: "Không thể xóa hợp đồng" });
+    res
+      .status(500)
+      .json({ status: "error", message: "Không thể xóa hợp đồng" });
   }
 });
 
@@ -565,9 +683,11 @@ router.get("/stats/overview", authenticateToken, async (req, res) => {
       },
     ]);
 
-    const totalContracts = await Contract.countDocuments({ status: { $ne: 'deleted' } });
+    const totalContracts = await Contract.countDocuments({
+      status: { $ne: "deleted" },
+    });
     const totalValue = await Contract.aggregate([
-      { $match: { status: { $ne: 'deleted' } } },
+      { $match: { status: { $ne: "deleted" } } },
       { $group: { _id: null, total: { $sum: "$contractValue" } } },
     ]);
 

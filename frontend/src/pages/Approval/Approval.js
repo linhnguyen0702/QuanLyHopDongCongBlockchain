@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -18,7 +18,13 @@ import {
   FormControl,
   InputLabel,
   Select,
-} from '@mui/material';
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  LinearProgress,
+} from "@mui/material";
 import {
   Approval as ApprovalIcon,
   Check as CheckIcon,
@@ -29,33 +35,46 @@ import {
   Person as PersonIcon,
   Schedule as ScheduleIcon,
   Visibility as ViewIcon,
-} from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { contractAPI } from '../../services/api';
-import LoadingSpinner from '../../components/Common/LoadingSpinner';
-import { useAuth } from '../../contexts/AuthContext';
-import toast from 'react-hot-toast';
+  CheckCircle as CheckCircleIcon,
+} from "@mui/icons-material";
+import { useQuery, useMutation, useQueryClient } from "react-query";
+import { contractAPI } from "../../services/api";
+import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import { useAuth } from "../../contexts/AuthContext";
+import toast from "react-hot-toast";
 
 const StatusChip = ({ status }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'warning';
-      case 'approved': return 'success';
-      case 'rejected': return 'error';
-      case 'draft': return 'default';
-      case 'active': return 'info';
-      default: return 'default';
+      case "pending":
+        return "warning";
+      case "approved":
+        return "success";
+      case "rejected":
+        return "error";
+      case "draft":
+        return "default";
+      case "active":
+        return "info";
+      default:
+        return "default";
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending': return 'Chờ duyệt';
-      case 'approved': return 'Đã duyệt';
-      case 'rejected': return 'Từ chối';
-      case 'draft': return 'Nháp';
-      case 'active': return 'Đang hoạt động';
-      default: return status;
+      case "pending":
+        return "Chờ duyệt";
+      case "approved":
+        return "Đã duyệt";
+      case "rejected":
+        return "Từ chối";
+      case "draft":
+        return "Nháp";
+      case "active":
+        return "Đang hoạt động";
+      default:
+        return status;
     }
   };
 
@@ -70,18 +89,27 @@ const StatusChip = ({ status }) => {
 
 const ContractCard = ({ contract, onMenuClick }) => {
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(value);
   };
+
+  const approvalCount = contract.approvals?.length || 0;
 
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 2,
+          }}
+        >
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
               {contract.contractName}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -97,25 +125,40 @@ const ContractCard = ({ contract, onMenuClick }) => {
               Phòng ban: {contract.department}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 1,
+            }}
+          >
             <StatusChip status={contract.status} />
-            <IconButton onClick={(e) => onMenuClick(e, contract)}>
+            {contract.status === "pending" && approvalCount > 0 && (
+              <Chip
+                label={`${approvalCount}/2 phê duyệt`}
+                size="small"
+                color={approvalCount >= 2 ? "success" : "warning"}
+                sx={{ fontSize: "0.75rem" }}
+              />
+            )}
+            <IconButton onClick={(e) => onMenuClick(e, contract)} size="small">
               <MoreVertIcon />
             </IconButton>
           </Box>
         </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <PersonIcon sx={{ fontSize: 16, color: "text.secondary" }} />
             <Typography variant="caption" color="text.secondary">
               {contract.createdBy?.fullName || contract.createdBy?.username}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <ScheduleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <ScheduleIcon sx={{ fontSize: 16, color: "text.secondary" }} />
             <Typography variant="caption" color="text.secondary">
-              {new Date(contract.createdAt).toLocaleDateString('vi-VN')}
+              {new Date(contract.createdAt).toLocaleDateString("vi-VN")}
             </Typography>
           </Box>
         </Box>
@@ -125,26 +168,27 @@ const ContractCard = ({ contract, onMenuClick }) => {
 };
 
 const Approval = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedContract, setSelectedContract] = useState(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
-  const [comment, setComment] = useState('');
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [comment, setComment] = useState("");
 
   const queryClient = useQueryClient();
   const { isManager } = useAuth();
 
   const { data: contractsData, isLoading } = useQuery(
-    ['contracts-approval', { search: searchTerm, status: statusFilter }],
+    ["contracts-approval", { search: searchTerm, status: statusFilter }],
     () => {
       const params = {
         search: searchTerm,
         page: 1,
         limit: 50,
       };
-      if (statusFilter && statusFilter !== 'all') {
+      if (statusFilter && statusFilter !== "all") {
         params.status = statusFilter;
       }
       return contractAPI.getContracts(params);
@@ -155,33 +199,41 @@ const Approval = () => {
   );
 
   const approveContractMutation = useMutation(
-    ({ contractId, comment }) => contractAPI.approveContract(contractId, comment),
+    ({ contractId, comment }) =>
+      contractAPI.approveContract(contractId, comment),
     {
-      onSuccess: () => {
-        queryClient.invalidateQueries('contracts-approval');
-        queryClient.invalidateQueries('contracts');
-        toast.success('Phê duyệt hợp đồng thành công!');
+      onSuccess: (response) => {
+        queryClient.invalidateQueries("contracts-approval");
+        queryClient.invalidateQueries("contracts");
+        const message =
+          response?.data?.message || "Phê duyệt hợp đồng thành công!";
+        toast.success(message);
         setApprovalDialogOpen(false);
-        setComment('');
+        setComment("");
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Phê duyệt hợp đồng thất bại!');
+        toast.error(
+          error.response?.data?.message || "Phê duyệt hợp đồng thất bại!"
+        );
       },
     }
   );
 
   const rejectContractMutation = useMutation(
-    ({ contractId, comment }) => contractAPI.rejectContract(contractId, comment),
+    ({ contractId, comment }) =>
+      contractAPI.rejectContract(contractId, comment),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('contracts-approval');
-        queryClient.invalidateQueries('contracts');
-        toast.success('Từ chối hợp đồng thành công!');
+        queryClient.invalidateQueries("contracts-approval");
+        queryClient.invalidateQueries("contracts");
+        toast.success("Từ chối hợp đồng thành công!");
         setRejectionDialogOpen(false);
-        setComment('');
+        setComment("");
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Từ chối hợp đồng thất bại!');
+        toast.error(
+          error.response?.data?.message || "Từ chối hợp đồng thất bại!"
+        );
       },
     }
   );
@@ -193,11 +245,10 @@ const Approval = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedContract(null);
   };
 
   const handleView = () => {
-    // Implement view functionality
+    setDetailDialogOpen(true);
     handleMenuClose();
   };
 
@@ -214,26 +265,40 @@ const Approval = () => {
   const confirmApprove = () => {
     approveContractMutation.mutate({
       contractId: selectedContract._id,
-      comment: comment
+      comment: comment,
     });
   };
 
   const confirmReject = () => {
     rejectContractMutation.mutate({
       contractId: selectedContract._id,
-      comment: comment
+      comment: comment,
     });
+  };
+
+  const handleDialogClose = () => {
+    setDetailDialogOpen(false);
+    setApprovalDialogOpen(false);
+    setRejectionDialogOpen(false);
+    setSelectedContract(null);
   };
 
   if (!isManager) {
     return (
       <Box>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{ fontWeight: "bold", mb: 3 }}
+        >
           Phê duyệt hợp đồng
         </Typography>
         <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <ApprovalIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <CardContent sx={{ textAlign: "center", py: 4 }}>
+            <ApprovalIcon
+              sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+            />
             <Typography variant="h6" color="text.secondary">
               Bạn không có quyền truy cập trang này
             </Typography>
@@ -252,7 +317,12 @@ const Approval = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{ fontWeight: "bold", mb: 3 }}
+      >
         Phê duyệt hợp đồng
       </Typography>
 
@@ -267,35 +337,37 @@ const Approval = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
-                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  startAdornment: (
+                    <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
+                  ),
                 }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel 
+                <InputLabel
                   sx={{
-                    fontSize: '0.7rem',
-                    color: '#6b7280',
+                    fontSize: "0.7rem",
+                    color: "#6b7280",
                     fontWeight: 400,
-                    '&.Mui-focused': {
-                      color: '#6b7280'
+                    "&.Mui-focused": {
+                      color: "#6b7280",
                     },
-                    '&.MuiInputLabel-shrink': {
-                      transform: 'translate(14px, -8px) scale(1)',
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      '&::before': {
+                    "&.MuiInputLabel-shrink": {
+                      transform: "translate(14px, -8px) scale(1)",
+                      fontSize: "0.75rem",
+                      color: "#6b7280",
+                      "&::before": {
                         content: '""',
-                        position: 'absolute',
-                        top: '50%',
-                        left: '-12px',
-                        right: '-12px',
-                        height: '1px',
-                        backgroundColor: '#e5e7eb',
-                        zIndex: -1
-                      }
-                    }
+                        position: "absolute",
+                        top: "50%",
+                        left: "-12px",
+                        right: "-12px",
+                        height: "1px",
+                        backgroundColor: "#e5e7eb",
+                        zIndex: -1,
+                      },
+                    },
                   }}
                 >
                   Trạng thái
@@ -318,8 +390,8 @@ const Approval = () => {
                 variant="outlined"
                 startIcon={<FilterIcon />}
                 onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
+                  setSearchTerm("");
+                  setStatusFilter("all");
                 }}
               >
                 Xóa bộ lọc
@@ -333,8 +405,11 @@ const Approval = () => {
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            <CardContent sx={{ textAlign: "center" }}>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: "bold", color: "primary.main" }}
+              >
                 {contracts.length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -345,9 +420,12 @@ const Approval = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
-                {contracts.filter(c => c.status === 'pending').length}
+            <CardContent sx={{ textAlign: "center" }}>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: "bold", color: "warning.main" }}
+              >
+                {contracts.filter((c) => c.status === "pending").length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Chờ duyệt
@@ -357,9 +435,12 @@ const Approval = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                {contracts.filter(c => c.status === 'approved').length}
+            <CardContent sx={{ textAlign: "center" }}>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: "bold", color: "success.main" }}
+              >
+                {contracts.filter((c) => c.status === "approved").length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Đã duyệt
@@ -369,9 +450,12 @@ const Approval = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                {contracts.filter(c => c.status === 'rejected').length}
+            <CardContent sx={{ textAlign: "center" }}>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: "bold", color: "error.main" }}
+              >
+                {contracts.filter((c) => c.status === "rejected").length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Từ chối
@@ -394,8 +478,10 @@ const Approval = () => {
         </Box>
       ) : (
         <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
-            <ApprovalIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+          <CardContent sx={{ textAlign: "center", py: 4 }}>
+            <ApprovalIcon
+              sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+            />
             <Typography variant="h6" color="text.secondary">
               Không có hợp đồng nào
             </Typography>
@@ -416,13 +502,13 @@ const Approval = () => {
           <ViewIcon sx={{ mr: 1 }} />
           Xem chi tiết
         </MenuItem>
-        {selectedContract?.status === 'pending' && (
+        {selectedContract?.status === "pending" && (
           <>
             <MenuItem onClick={handleApprove}>
               <CheckIcon sx={{ mr: 1 }} />
               Phê duyệt
             </MenuItem>
-            <MenuItem onClick={handleReject} sx={{ color: 'error.main' }}>
+            <MenuItem onClick={handleReject} sx={{ color: "error.main" }}>
               <CloseIcon sx={{ mr: 1 }} />
               Từ chối
             </MenuItem>
@@ -431,12 +517,62 @@ const Approval = () => {
       </Menu>
 
       {/* Approval Dialog */}
-      <Dialog open={approvalDialogOpen} onClose={() => setApprovalDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={approvalDialogOpen}
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Phê duyệt hợp đồng</DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
-            Bạn có chắc chắn muốn phê duyệt hợp đồng "{selectedContract?.contractName}"?
+            Bạn có chắc chắn muốn phê duyệt hợp đồng "
+            {selectedContract?.contractName}"?
           </Typography>
+
+          {selectedContract?.approvals &&
+            selectedContract.approvals.length > 0 && (
+              <Box sx={{ mb: 2, p: 2, bgcolor: "#f0f9ff", borderRadius: 1 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ mb: 1, fontWeight: "bold", color: "#1976d2" }}
+                >
+                  Trạng thái phê duyệt: {selectedContract.approvals.length}/2
+                </Typography>
+                <List dense>
+                  {selectedContract.approvals.map((approval, index) => (
+                    <ListItem key={index} sx={{ pl: 0 }}>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        <CheckCircleIcon color="success" fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={`${
+                          approval.approvedBy?.fullName ||
+                          approval.approvedBy?.username ||
+                          "N/A"
+                        }`}
+                        secondary={new Date(approval.approvedAt).toLocaleString(
+                          "vi-VN"
+                        )}
+                        primaryTypographyProps={{
+                          variant: "body2",
+                          fontWeight: "medium",
+                        }}
+                        secondaryTypographyProps={{ variant: "caption" }}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                <Typography variant="caption" color="text.secondary">
+                  {selectedContract.approvals.length >= 2
+                    ? '✅ Hợp đồng sẽ chuyển sang trạng thái "Đã duyệt"'
+                    : `⏳ Cần thêm ${
+                        2 - selectedContract.approvals.length
+                      } phê duyệt nữa`}
+                </Typography>
+              </Box>
+            )}
+
           <TextField
             fullWidth
             multiline
@@ -456,17 +592,23 @@ const Approval = () => {
             disabled={approveContractMutation.isLoading}
             startIcon={<CheckIcon />}
           >
-            {approveContractMutation.isLoading ? 'Đang xử lý...' : 'Phê duyệt'}
+            {approveContractMutation.isLoading ? "Đang xử lý..." : "Phê duyệt"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Rejection Dialog */}
-      <Dialog open={rejectionDialogOpen} onClose={() => setRejectionDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={rejectionDialogOpen}
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Từ chối hợp đồng</DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
-            Bạn có chắc chắn muốn từ chối hợp đồng "{selectedContract?.contractName}"?
+            Bạn có chắc chắn muốn từ chối hợp đồng "
+            {selectedContract?.contractName}"?
           </Typography>
           <TextField
             fullWidth
@@ -488,8 +630,245 @@ const Approval = () => {
             disabled={rejectContractMutation.isLoading || !comment.trim()}
             startIcon={<CloseIcon />}
           >
-            {rejectContractMutation.isLoading ? 'Đang xử lý...' : 'Từ chối'}
+            {rejectContractMutation.isLoading ? "Đang xử lý..." : "Từ chối"}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Contract Detail Dialog */}
+      <Dialog
+        open={detailDialogOpen}
+        onClose={handleDialogClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Chi tiết hợp đồng</DialogTitle>
+        <DialogContent dividers>
+          {selectedContract && (
+            <Box sx={{ pt: 1 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Số hợp đồng
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.contractNumber}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Tên hợp đồng
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.contractName}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Nhà thầu
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.contractor}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Loại hợp đồng
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.contractType}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Giá trị hợp đồng
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {new Intl.NumberFormat("vi-VN", {
+                      style: "currency",
+                      currency: "VND",
+                    }).format(selectedContract.contractValue)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Phòng ban
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.department}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Người phụ trách
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.responsiblePerson}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ngày bắt đầu
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {new Date(selectedContract.startDate).toLocaleDateString(
+                      "vi-VN"
+                    )}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ngày kết thúc
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {new Date(selectedContract.endDate).toLocaleDateString(
+                      "vi-VN"
+                    )}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Thời gian thực hiện
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                    {selectedContract.duration} ngày
+                  </Typography>
+                </Grid>
+              </Grid>
+              {selectedContract.description && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
+                    Mô tả
+                  </Typography>
+                  <Divider />
+                  <Typography
+                    variant="body1"
+                    sx={{ mt: 1, whiteSpace: "pre-wrap" }}
+                  >
+                    {selectedContract.description}
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Approval Progress */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Tiến trình phê duyệt
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                {(() => {
+                  // Find the latest version of the selected contract from the query data
+                  const currentContract =
+                    contracts.find((c) => c._id === selectedContract._id) ||
+                    selectedContract;
+                  const requiredApprovals = 2;
+                  const approvals = currentContract.approvals || [];
+                  const progress = (approvals.length / requiredApprovals) * 100;
+
+                  return (
+                    <>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
+                      >
+                        <Box sx={{ width: "100%", mr: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={progress}
+                            sx={{ height: 8, borderRadius: 5 }}
+                          />
+                        </Box>
+                        <Box sx={{ minWidth: 35 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                          >{`${approvals.length}/${requiredApprovals}`}</Typography>
+                        </Box>
+                      </Box>
+                      <List dense>
+                        {approvals.length > 0 ? (
+                          approvals.map((approval, index) => (
+                            <ListItem key={index} sx={{ pl: 0 }}>
+                              <ListItemIcon>
+                                <CheckCircleIcon color="success" />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={
+                                  <Box>
+                                    <Typography
+                                      variant="body2"
+                                      component="span"
+                                      sx={{ fontWeight: "medium" }}
+                                    >
+                                      {approval.approvedBy?.fullName ||
+                                        approval.approvedBy?.username ||
+                                        "N/A"}
+                                    </Typography>
+                                    <Chip
+                                      label={
+                                        approval.approvedBy?.role?.toUpperCase() ||
+                                        "N/A"
+                                      }
+                                      size="small"
+                                      sx={{
+                                        ml: 1,
+                                        height: "20px",
+                                        fontSize: "0.7rem",
+                                      }}
+                                      color={
+                                        approval.approvedBy?.role === "admin"
+                                          ? "error"
+                                          : "primary"
+                                      }
+                                    />
+                                  </Box>
+                                }
+                                secondary={
+                                  <Box>
+                                    <Typography
+                                      variant="caption"
+                                      component="div"
+                                    >
+                                      Đã duyệt vào{" "}
+                                      {new Date(
+                                        approval.approvedAt
+                                      ).toLocaleString("vi-VN")}
+                                    </Typography>
+                                    {approval.comment && (
+                                      <Typography
+                                        variant="caption"
+                                        component="div"
+                                        sx={{
+                                          fontStyle: "italic",
+                                          color: "text.secondary",
+                                        }}
+                                      >
+                                        Ghi chú: {approval.comment}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                }
+                              />
+                            </ListItem>
+                          ))
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            Chưa có phê duyệt nào.
+                          </Typography>
+                        )}
+                      </List>
+                    </>
+                  );
+                })()}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailDialogOpen(false)}>Đóng</Button>
         </DialogActions>
       </Dialog>
     </Box>

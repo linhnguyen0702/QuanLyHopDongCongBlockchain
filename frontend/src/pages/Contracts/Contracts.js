@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Add as AddIcon,
   Search as SearchIcon,
@@ -25,36 +25,50 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   Check as CheckIcon,
-} from '@mui/icons-material';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useNavigate } from 'react-router-dom';
-import { contractAPI } from '../../services/api';
-import LoadingSpinner from '../../components/Common/LoadingSpinner';
-import { useAuth } from '../../contexts/AuthContext';
-import toast from 'react-hot-toast';
+} from "@mui/icons-material";
+import { useQuery, useMutation, useQueryClient } from "react-query";
+import { useNavigate } from "react-router-dom";
+import { contractAPI } from "../../services/api";
+import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import { useAuth } from "../../contexts/AuthContext";
+import toast from "react-hot-toast";
 
 const StatusChip = ({ status }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case 'draft': return 'default';
-      case 'pending': return 'warning';
-      case 'approved': return 'success';
-      case 'active': return 'info';
-      case 'completed': return 'primary';
-      case 'cancelled': return 'error';
-      default: return 'default';
+      case "draft":
+        return "default";
+      case "pending":
+        return "warning";
+      case "approved":
+        return "success";
+      case "active":
+        return "info";
+      case "completed":
+        return "primary";
+      case "cancelled":
+        return "error";
+      default:
+        return "default";
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'draft': return 'Nháp';
-      case 'pending': return 'Chờ duyệt';
-      case 'approved': return 'Đã duyệt';
-      case 'active': return 'Đang thực hiện';
-      case 'completed': return 'Hoàn thành';
-      case 'cancelled': return 'Hủy bỏ';
-      default: return status;
+      case "draft":
+        return "Nháp";
+      case "pending":
+        return "Chờ duyệt";
+      case "approved":
+        return "Đã duyệt";
+      case "active":
+        return "Đang thực hiện";
+      case "completed":
+        return "Hoàn thành";
+      case "cancelled":
+        return "Hủy bỏ";
+      default:
+        return status;
     }
   };
 
@@ -69,18 +83,27 @@ const StatusChip = ({ status }) => {
 
 const ContractCard = ({ contract, onMenuClick }) => {
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(value);
   };
+
+  const approvalCount = contract.approvals?.length || 0;
 
   return (
     <Card sx={{ mb: 2 }}>
       <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 2,
+          }}
+        >
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
               {contract.contractName}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -96,8 +119,23 @@ const ContractCard = ({ contract, onMenuClick }) => {
               Phòng ban: {contract.department}
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 1,
+            }}
+          >
             <StatusChip status={contract.status} />
+            {contract.status === "pending" && approvalCount > 0 && (
+              <Chip
+                label={`${approvalCount}/2 phê duyệt`}
+                size="small"
+                color={approvalCount >= 2 ? "success" : "warning"}
+                sx={{ fontSize: "0.75rem" }}
+              />
+            )}
             <IconButton onClick={(e) => onMenuClick(e, contract)}>
               <MoreVertIcon />
             </IconButton>
@@ -109,8 +147,8 @@ const ContractCard = ({ contract, onMenuClick }) => {
 };
 
 const Contracts = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedContract, setSelectedContract] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -120,13 +158,14 @@ const Contracts = () => {
   const { isManager } = useAuth();
 
   const { data: contractsData, isLoading } = useQuery(
-    ['contracts', { search: searchTerm, status: statusFilter }],
-    () => contractAPI.getContracts({
-      search: searchTerm,
-      status: statusFilter,
-      page: 1,
-      limit: 50,
-    }),
+    ["contracts", { search: searchTerm, status: statusFilter }],
+    () =>
+      contractAPI.getContracts({
+        search: searchTerm,
+        status: statusFilter,
+        page: 1,
+        limit: 50,
+      }),
     {
       keepPreviousData: true,
     }
@@ -141,12 +180,12 @@ const Contracts = () => {
     (contractId) => contractAPI.deleteContract(contractId),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('contracts');
-        toast.success('Xóa hợp đồng thành công!');
+        queryClient.invalidateQueries("contracts");
+        toast.success("Xóa hợp đồng thành công!");
         handleCloseDeleteDialog();
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Xóa hợp đồng thất bại!');
+        toast.error(error.response?.data?.message || "Xóa hợp đồng thất bại!");
         handleCloseDeleteDialog();
       },
     }
@@ -198,14 +237,21 @@ const Contracts = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold' }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
+        <Typography variant="h4" component="h1" sx={{ fontWeight: "bold" }}>
           Quản lý hợp đồng
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/contracts/create')}
+          onClick={() => navigate("/contracts/create")}
         >
           Tạo hợp đồng mới
         </Button>
@@ -222,7 +268,9 @@ const Contracts = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 InputProps={{
-                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  startAdornment: (
+                    <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
+                  ),
                 }}
               />
             </Grid>
@@ -233,40 +281,40 @@ const Contracts = () => {
                 label="Trạng thái"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                SelectProps={{ 
+                SelectProps={{
                   native: true,
                   MenuProps: {
                     anchorOrigin: {
-                      vertical: 'top',
-                      horizontal: 'left',
+                      vertical: "top",
+                      horizontal: "left",
                     },
                     transformOrigin: {
-                      vertical: 'bottom',
-                      horizontal: 'left',
+                      vertical: "bottom",
+                      horizontal: "left",
                     },
-                  }
+                  },
                 }}
                 InputLabelProps={{
                   shrink: true,
                   sx: {
-                    position: 'absolute',
-                    
-                    backgroundColor: 'white',
-                    padding: '0 4px',
-                    fontSize: '0.99rem',
-                    color: '#6b7280',
+                    position: "absolute",
+
+                    backgroundColor: "white",
+                    padding: "0 4px",
+                    fontSize: "0.99rem",
+                    color: "#6b7280",
                     fontWeight: 400,
-                    '&::before': {
+                    "&::before": {
                       content: '""',
-                      position: 'absolute',
-                      top: '50%',
-                      left: '-12px',
-                      right: '-12px',
-                      height: '1px',
-                      backgroundColor: '#e5e7eb',
-                      zIndex: -1
-                    }
-                  }
+                      position: "absolute",
+                      top: "50%",
+                      left: "-12px",
+                      right: "-12px",
+                      height: "1px",
+                      backgroundColor: "#e5e7eb",
+                      zIndex: -1,
+                    },
+                  },
                 }}
               >
                 <option value="">Tất cả</option>
@@ -284,8 +332,8 @@ const Contracts = () => {
                 variant="outlined"
                 startIcon={<FilterIcon />}
                 onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('');
+                  setSearchTerm("");
+                  setStatusFilter("");
                 }}
               >
                 Xóa bộ lọc
@@ -308,7 +356,7 @@ const Contracts = () => {
         </Box>
       ) : (
         <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+          <CardContent sx={{ textAlign: "center", py: 4 }}>
             <Typography variant="h6" color="text.secondary">
               Không tìm thấy hợp đồng nào
             </Typography>
@@ -333,13 +381,13 @@ const Contracts = () => {
           <EditIcon sx={{ mr: 1 }} />
           Chỉnh sửa
         </MenuItem>
-        {isManager && selectedContract?.status === 'pending' && (
+        {isManager && selectedContract?.status === "pending" && (
           <MenuItem onClick={handleApprove}>
             <CheckIcon sx={{ mr: 1 }} />
             Phê duyệt
           </MenuItem>
         )}
-        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+        <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
           <DeleteIcon sx={{ mr: 1 }} />
           Xóa
         </MenuItem>
@@ -350,8 +398,8 @@ const Contracts = () => {
         <DialogTitle>Xác nhận xóa</DialogTitle>
         <DialogContent>
           <Typography>
-            Bạn có chắc chắn muốn xóa hợp đồng "{selectedContract?.contractName}"?
-            Hành động này không thể hoàn tác.
+            Bạn có chắc chắn muốn xóa hợp đồng "{selectedContract?.contractName}
+            "? Hành động này không thể hoàn tác.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -362,7 +410,7 @@ const Contracts = () => {
             variant="contained"
             disabled={deleteContractMutation.isLoading}
           >
-            {deleteContractMutation.isLoading ? 'Đang xóa...' : 'Xóa'}
+            {deleteContractMutation.isLoading ? "Đang xóa..." : "Xóa"}
           </Button>
         </DialogActions>
       </Dialog>

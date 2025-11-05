@@ -38,7 +38,7 @@ import {
   Approval as ApprovalIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useTranslation } from 'react-i18next'; // Import useTranslation
+import { useTranslation } from "react-i18next"; // Import useTranslation
 import { useAuth } from "../../contexts/AuthContext";
 import WalletConnect from "../Blockchain/WalletConnect";
 
@@ -63,7 +63,11 @@ const Layout = ({ children }) => {
       path: "/approval",
       managerOnly: true,
     },
-    { key: "sidebar.contractors", icon: <BusinessIcon />, path: "/contractors" },
+    {
+      key: "sidebar.contractors",
+      icon: <BusinessIcon />,
+      path: "/contractors",
+    },
     {
       key: "sidebar.reports",
       icon: <ReportIcon />,
@@ -76,7 +80,12 @@ const Layout = ({ children }) => {
       path: "/audit",
       managerOnly: true,
     },
-    { key: "sidebar.users", icon: <PeopleIcon />, path: "/users", adminOnly: true },
+    {
+      key: "sidebar.users",
+      icon: <PeopleIcon />,
+      path: "/users",
+      adminOnly: true,
+    },
     {
       key: "sidebar.security",
       icon: <SecurityIcon />,
@@ -374,7 +383,7 @@ const Layout = ({ children }) => {
             {/* User Menu */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                Admin
+                {user?.fullName || user?.username || "User"}
               </Typography>
               <IconButton
                 size="large"
@@ -393,7 +402,9 @@ const Layout = ({ children }) => {
                   }
                   sx={{ width: 32, height: 32, bgcolor: "primary.main" }}
                 >
-                  {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
+                  {user?.fullName?.charAt(0)?.toUpperCase() ||
+                    user?.username?.charAt(0)?.toUpperCase() ||
+                    "U"}
                 </Avatar>
               </IconButton>
             </Box>

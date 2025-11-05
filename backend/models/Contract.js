@@ -63,7 +63,7 @@ const contractSchema = new mongoose.Schema(
         "active",
         "completed",
         "cancelled",
-        "deleted" // Added deleted status for soft delete
+        "deleted", // Added deleted status for soft delete
       ],
       default: "draft",
     },
@@ -84,6 +84,21 @@ const contractSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // New approval system: requires 2 approvals
+    approvals: [
+      {
+        approvedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        approvedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        comment: String,
+      },
+    ],
+    // Keep for backward compatibility
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -156,7 +171,7 @@ const contractSchema = new mongoose.Schema(
             "activated",
             "completed",
             "cancelled",
-            "deleted"
+            "deleted",
           ],
         },
         performedBy: {
@@ -251,4 +266,3 @@ contractSchema.statics.findExpiring = function (days = 30) {
 };
 
 module.exports = mongoose.model("Contract", contractSchema);
-

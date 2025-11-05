@@ -43,7 +43,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      setLoading(true);
       const response = await authAPI.login(email, password);
 
       // Check if 2FA is required
@@ -53,7 +52,6 @@ export const AuthProvider = ({ children }) => {
         toast.success(
           response.data.message || "Vui lòng kiểm tra email để lấy mã OTP"
         );
-        setLoading(false);
         return { twoFactorRequired: true };
       }
 
@@ -64,7 +62,6 @@ export const AuthProvider = ({ children }) => {
         setUser(user);
         setLoginStep("login"); // Reset step after successful login
         toast.success("Đăng nhập thành công!");
-        setLoading(false);
         return { success: true };
       }
 
@@ -88,7 +85,6 @@ export const AuthProvider = ({ children }) => {
       }
 
       toast.error(message);
-      setLoading(false);
       return { success: false, error: message };
     }
   };
@@ -100,7 +96,6 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      setLoading(true);
       const response = await authAPI.verifyOtp(otpUserId, otpCode);
 
       const { user, token } = response.data.data;
@@ -110,13 +105,11 @@ export const AuthProvider = ({ children }) => {
       setLoginStep("login"); // Reset step after successful login
 
       toast.success("Đăng nhập thành công!");
-      setLoading(false);
       return { success: true };
     } catch (error) {
       console.error("Verify OTP error:", error);
       const message = error.response?.data?.message || "Xác thực OTP thất bại";
       toast.error(message);
-      setLoading(false);
       return { success: false, error: message };
     }
   };
