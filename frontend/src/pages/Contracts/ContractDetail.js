@@ -36,6 +36,8 @@ const StatusChip = ({ status }) => {
         return "warning";
       case "approved":
         return "success";
+      case "rejected":
+        return "error";
       case "active":
         return "info";
       case "completed":
@@ -55,6 +57,8 @@ const StatusChip = ({ status }) => {
         return "Chờ duyệt";
       case "approved":
         return "Đã duyệt";
+      case "rejected":
+        return "Từ chối";
       case "active":
         return "Đang thực hiện";
       case "completed":

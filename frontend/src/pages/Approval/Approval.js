@@ -40,6 +40,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { contractAPI } from "../../services/api";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import BlockchainProgressNotification from "../../components/Common/BlockchainProgressNotification";
 import { useAuth } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
 
@@ -176,6 +177,8 @@ const Approval = () => {
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [comment, setComment] = useState("");
+  const [showBlockchainProgress, setShowBlockchainProgress] = useState(false);
+  const [blockchainMessage, setBlockchainMessage] = useState("");
 
   const queryClient = useQueryClient();
   const { isManager } = useAuth();
@@ -202,16 +205,35 @@ const Approval = () => {
     ({ contractId, comment }) =>
       contractAPI.approveContract(contractId, comment),
     {
+      onMutate: () => {
+        // Hiển thị notification blockchain đang xử lý
+        setShowBlockchainProgress(true);
+        setBlockchainMessage(
+          "Đang phê duyệt hợp đồng và lưu lên blockchain..."
+        );
+      },
       onSuccess: (response) => {
+        // Ẩn notification ngay lập tức
+        setShowBlockchainProgress(false);
+
         queryClient.invalidateQueries("contracts-approval");
         queryClient.invalidateQueries("contracts");
+
         const message =
           response?.data?.message || "Phê duyệt hợp đồng thành công!";
-        toast.success(message);
+
+        // Kiểm tra nếu có blockchain pending
+        if (response?.data?.data?.blockchainPending) {
+          toast.success(message + "\n✅ Đã lưu lên blockchain thành công!");
+        } else {
+          toast.success(message);
+        }
+
         setApprovalDialogOpen(false);
         setComment("");
       },
       onError: (error) => {
+        setShowBlockchainProgress(false);
         toast.error(
           error.response?.data?.message || "Phê duyệt hợp đồng thất bại!"
         );
@@ -223,14 +245,25 @@ const Approval = () => {
     ({ contractId, comment }) =>
       contractAPI.rejectContract(contractId, comment),
     {
+      onMutate: () => {
+        // Hiển thị notification blockchain đang xử lý
+        setShowBlockchainProgress(true);
+        setBlockchainMessage("Đang từ chối hợp đồng và lưu lên blockchain...");
+      },
       onSuccess: () => {
+        // Ẩn notification ngay lập tức
+        setShowBlockchainProgress(false);
+
         queryClient.invalidateQueries("contracts-approval");
         queryClient.invalidateQueries("contracts");
-        toast.success("Từ chối hợp đồng thành công!");
+        toast.success(
+          "Từ chối hợp đồng thành công!\n✅ Đã lưu lên blockchain!"
+        );
         setRejectionDialogOpen(false);
         setComment("");
       },
       onError: (error) => {
+        setShowBlockchainProgress(false);
         toast.error(
           error.response?.data?.message || "Từ chối hợp đồng thất bại!"
         );
@@ -871,6 +904,13 @@ const Approval = () => {
           <Button onClick={() => setDetailDialogOpen(false)}>Đóng</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Blockchain Progress Notification */}
+      <BlockchainProgressNotification
+        show={showBlockchainProgress}
+        message={blockchainMessage}
+        onClose={() => setShowBlockchainProgress(false)}
+      />
     </Box>
   );
 };

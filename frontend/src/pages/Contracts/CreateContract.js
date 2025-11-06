@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Card,
@@ -22,6 +22,7 @@ import * as yup from "yup";
 import { useMutation, useQueryClient, useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { contractAPI, contractorAPI } from "../../services/api";
+import BlockchainProgressNotification from "../../components/Common/BlockchainProgressNotification";
 import toast from "react-hot-toast";
 
 const validationSchema = yup.object({
@@ -45,6 +46,8 @@ const validationSchema = yup.object({
 const CreateContract = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [showBlockchainProgress, setShowBlockchainProgress] = useState(false);
+  const [blockchainMessage, setBlockchainMessage] = useState("");
 
   // Fetch danh sách nhà thầu (ưu tiên trạng thái active)
   const { data: contractorsData, isLoading: contractorsLoading } = useQuery(
@@ -86,16 +89,31 @@ const CreateContract = () => {
   const createContractMutation = useMutation(
     (contractData) => contractAPI.createContract(contractData),
     {
+      onMutate: (variables) => {
+        // Chỉ hiển thị notification nếu không phải draft
+        if (variables.status !== "draft") {
+          setShowBlockchainProgress(true);
+          setBlockchainMessage("Đang tạo hợp đồng và lưu lên blockchain...");
+        }
+      },
       onSuccess: (response, variables) => {
+        // Ẩn notification ngay lập tức
+        setShowBlockchainProgress(false);
+
         console.log("Create contract response:", response.data);
         queryClient.invalidateQueries("contracts");
         const isDraft = variables.status === "draft";
-        toast.success(
-          isDraft ? "Lưu bản nháp thành công!" : "Tạo hợp đồng thành công!"
-        );
+
+        if (isDraft) {
+          toast.success("Lưu bản nháp thành công!");
+        } else {
+          toast.success("Tạo hợp đồng thành công!\n✅ Đã lưu lên blockchain!");
+        }
+
         navigate(`/contracts/${response.data.data.contract._id}`);
       },
       onError: (error, variables) => {
+        setShowBlockchainProgress(false);
         console.error("Create contract error:", error);
         console.error("Error response:", error.response?.data);
         const isDraft = variables.status === "draft";
@@ -453,6 +471,13 @@ const CreateContract = () => {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Blockchain Progress Notification */}
+      <BlockchainProgressNotification
+        show={showBlockchainProgress}
+        message={blockchainMessage}
+        onClose={() => setShowBlockchainProgress(false)}
+      />
     </LocalizationProvider>
   );
 };

@@ -286,6 +286,76 @@ class BlockchainService {
   }
 
   /**
+   * Phê duyệt contract trên blockchain
+   */
+  async approveContract(contractNumber, approverName, comment = "Approved") {
+    if (!this.isEnabled()) {
+      logger.warn("Blockchain is not enabled, skipping contract approval");
+      return null;
+    }
+
+    try {
+      logger.info(
+        `Approving contract on blockchain: ${contractNumber} by ${approverName}`
+      );
+
+      const tx = await this.contract.approveContract(
+        contractNumber,
+        approverName,
+        comment
+      );
+
+      logger.info(`Transaction sent: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+
+      logger.info(
+        `Contract approved on blockchain. Block: ${receipt.blockNumber}`
+      );
+
+      return receipt.hash;
+    } catch (error) {
+      logger.error("Failed to approve contract on blockchain:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Từ chối contract trên blockchain
+   */
+  async rejectContract(contractNumber, rejectorName, reason = "Rejected") {
+    if (!this.isEnabled()) {
+      logger.warn("Blockchain is not enabled, skipping contract rejection");
+      return null;
+    }
+
+    try {
+      logger.info(
+        `Rejecting contract on blockchain: ${contractNumber} by ${rejectorName}`
+      );
+
+      const tx = await this.contract.rejectContract(
+        contractNumber,
+        rejectorName,
+        reason
+      );
+
+      logger.info(`Transaction sent: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+
+      logger.info(
+        `Contract rejected on blockchain. Block: ${receipt.blockNumber}`
+      );
+
+      return receipt.hash;
+    } catch (error) {
+      logger.error("Failed to reject contract on blockchain:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Lấy thông tin contract từ blockchain
    */
   async getContract(contractNumber) {

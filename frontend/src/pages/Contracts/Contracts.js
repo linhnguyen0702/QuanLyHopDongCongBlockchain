@@ -24,13 +24,11 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
-  Check as CheckIcon,
 } from "@mui/icons-material";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { contractAPI } from "../../services/api";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
-import { useAuth } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
 
 const StatusChip = ({ status }) => {
@@ -42,6 +40,8 @@ const StatusChip = ({ status }) => {
         return "warning";
       case "approved":
         return "success";
+      case "rejected":
+        return "error";
       case "active":
         return "info";
       case "completed":
@@ -61,6 +61,8 @@ const StatusChip = ({ status }) => {
         return "Chờ duyệt";
       case "approved":
         return "Đã duyệt";
+      case "rejected":
+        return "Từ chối";
       case "active":
         return "Đang thực hiện";
       case "completed":
@@ -155,7 +157,6 @@ const Contracts = () => {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isManager } = useAuth();
 
   const { data: contractsData, isLoading } = useQuery(
     ["contracts", { search: searchTerm, status: statusFilter }],
@@ -224,11 +225,6 @@ const Contracts = () => {
     if (selectedContract) {
       deleteContractMutation.mutate(selectedContract._id);
     }
-  };
-
-  const handleApprove = () => {
-    // Implement approve functionality
-    handleMenuClose();
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -321,9 +317,10 @@ const Contracts = () => {
                 <option value="draft">Nháp</option>
                 <option value="pending">Chờ duyệt</option>
                 <option value="approved">Đã duyệt</option>
+                <option value="rejected">Từ chối</option>
                 <option value="active">Đang thực hiện</option>
                 <option value="completed">Hoàn thành</option>
-                <option value="cancelled">Hủy bỏ</option>
+                
               </TextField>
             </Grid>
             <Grid item xs={12} md={2}>
@@ -381,12 +378,6 @@ const Contracts = () => {
           <EditIcon sx={{ mr: 1 }} />
           Chỉnh sửa
         </MenuItem>
-        {isManager && selectedContract?.status === "pending" && (
-          <MenuItem onClick={handleApprove}>
-            <CheckIcon sx={{ mr: 1 }} />
-            Phê duyệt
-          </MenuItem>
-        )}
         <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
           <DeleteIcon sx={{ mr: 1 }} />
           Xóa

@@ -232,6 +232,92 @@ contract ContractManager {
     }
     
     /**
+     * @dev Phê duyệt contract
+     */
+    function approveContract(
+        string memory _contractNumber,
+        string memory _approverName,
+        string memory _comment
+    ) external onlyAuthorized contractMustExist(_contractNumber) {
+        Contract storage contractData = contracts[_contractNumber];
+        require(contractData.isActive, "Contract is not active");
+        require(
+            keccak256(bytes(contractData.status)) == keccak256(bytes("pending")) ||
+            keccak256(bytes(contractData.status)) == keccak256(bytes("draft")),
+            "Contract must be in pending or draft status"
+        );
+        
+        string memory previousStatus = contractData.status;
+        contractData.status = "approved";
+        
+        string memory remarks = string(abi.encodePacked(
+            "Approved by: ", 
+            _approverName, 
+            " - ", 
+            _comment
+        ));
+        
+        _addHistory(
+            _contractNumber,
+            "approved",
+            previousStatus,
+            "approved",
+            remarks
+        );
+        
+        emit ContractStatusChanged(
+            _contractNumber,
+            previousStatus,
+            "approved",
+            msg.sender,
+            block.timestamp
+        );
+    }
+    
+    /**
+     * @dev Từ chối contract
+     */
+    function rejectContract(
+        string memory _contractNumber,
+        string memory _rejectorName,
+        string memory _reason
+    ) external onlyAuthorized contractMustExist(_contractNumber) {
+        Contract storage contractData = contracts[_contractNumber];
+        require(contractData.isActive, "Contract is not active");
+        require(
+            keccak256(bytes(contractData.status)) == keccak256(bytes("pending")) ||
+            keccak256(bytes(contractData.status)) == keccak256(bytes("draft")),
+            "Contract must be in pending or draft status"
+        );
+        
+        string memory previousStatus = contractData.status;
+        contractData.status = "rejected";
+        
+        string memory remarks = string(abi.encodePacked(
+            "Rejected by: ", 
+            _rejectorName, 
+            " - ", 
+            _reason
+        ));
+        
+        _addHistory(
+            _contractNumber,
+            "rejected",
+            previousStatus,
+            "rejected",
+            remarks
+        );
+        
+        emit ContractStatusChanged(
+            _contractNumber,
+            previousStatus,
+            "rejected",
+            msg.sender,
+            block.timestamp
+        );
+    }
+    
+    /**
      * @dev Vô hiệu hóa contract (soft delete)
      */
     function deactivateContract(

@@ -383,12 +383,10 @@ router.post(
           .json({ status: "error", message: "Không tìm thấy hợp đồng" });
       }
       if (contract.status !== "pending") {
-        return res
-          .status(400)
-          .json({
-            status: "error",
-            message: "Chỉ có hợp đồng chờ phê duyệt mới được phê duyệt",
-          });
+        return res.status(400).json({
+          status: "error",
+          message: "Chỉ có hợp đồng chờ phê duyệt mới được phê duyệt",
+        });
       }
 
       // Check if user already approved
@@ -430,6 +428,109 @@ router.post(
             req.body.comment || "Hợp đồng đã được phê duyệt đầy đủ (2/2).",
         });
 
+        // 🔗 LƯU LÊN BLOCKCHAIN
+        if (blockchainService.isEnabled()) {
+          try {
+            const approverName =
+              req.user.fullName || req.user.username || "Unknown";
+            const comment =
+              req.body.comment || "Hợp đồng đã được phê duyệt đầy đủ (2/2)";
+
+            // Kiểm tra contract có tồn tại trên blockchain không
+            const exists = await blockchainService.doesContractExist(
+              contract.contractNumber
+            );
+
+            if (!exists) {
+              console.log(
+                `⚠️ Contract ${contract.contractNumber} chưa có trên blockchain, đang tạo...`
+              );
+
+              // Tạo contract trên blockchain trước
+              const createResult = await blockchainService.createContract({
+                contractNumber: contract.contractNumber,
+                contractName: contract.contractName,
+                contractor: contract.contractor,
+                contractValue: contract.contractValue,
+                currency: contract.currency,
+                startDate: contract.startDate,
+                endDate: contract.endDate,
+                contractType: contract.contractType,
+                department: contract.department,
+                responsiblePerson: contract.responsiblePerson,
+              });
+
+              console.log(
+                `✅ Contract created on blockchain: ${createResult.transactionHash}`
+              );
+              console.log(
+                `⏳ Đợi transaction confirm (có thể mất 15-20 giây)...`
+              );
+
+              // ĐỢI TRANSACTION CONFIRM - QUAN TRỌNG!
+              // Không dùng setTimeout mà đợi thật sự transaction được mine
+              const provider = blockchainService.provider;
+              let confirmed = false;
+              let attempts = 0;
+              const maxAttempts = 30; // 30 lần x 2 giây = 60 giây timeout
+
+              while (!confirmed && attempts < maxAttempts) {
+                try {
+                  const receipt = await provider.getTransactionReceipt(
+                    createResult.transactionHash
+                  );
+                  if (receipt && receipt.status === 1) {
+                    confirmed = true;
+                    console.log(
+                      `✅ Transaction confirmed in block ${receipt.blockNumber}`
+                    );
+                  } else if (receipt && receipt.status === 0) {
+                    throw new Error("Transaction failed");
+                  }
+                } catch (error) {
+                  // Transaction chưa được mine, tiếp tục đợi
+                }
+
+                if (!confirmed) {
+                  await new Promise((resolve) => setTimeout(resolve, 2000));
+                  attempts++;
+                  if (attempts % 5 === 0) {
+                    console.log(`⏳ Vẫn đang đợi... (${attempts * 2}s)`);
+                  }
+                }
+              }
+
+              if (!confirmed) {
+                throw new Error(
+                  "Transaction timeout - vui lòng thử phê duyệt lại sau"
+                );
+              }
+
+              console.log(
+                `✅ Contract đã được tạo và confirmed, tiếp tục phê duyệt...`
+              );
+            }
+
+            // Phê duyệt contract trên blockchain
+            const txHash = await blockchainService.approveContract(
+              contract.contractNumber,
+              approverName,
+              comment
+            );
+
+            if (txHash) {
+              contract.blockchainTxHash = txHash;
+              console.log(`✅ Approval saved to blockchain: ${txHash}`);
+            }
+          } catch (blockchainError) {
+            console.error("Blockchain approval error:", blockchainError);
+            // Không fail request nếu blockchain lỗi, chỉ log
+            console.log(
+              "⚠️ Approval saved to MongoDB only (blockchain failed)"
+            );
+          }
+        }
+
         await AuditLog.createLog({
           type: "contract",
           action: "approved",
@@ -470,11 +571,17 @@ router.post(
       res.json({
         status: "success",
         message: message,
+        notification:
+          approvalCount >= 2
+            ? "Hợp đồng đã được phê duyệt và đang lưu lên blockchain. Vui lòng đợi 15-20 giây..."
+            : null,
         data: {
           contract,
           approvalCount: approvalCount,
           requiredApprovals: 2,
           isFullyApproved: approvalCount >= 2,
+          blockchainPending:
+            approvalCount >= 2 && blockchainService.isEnabled(),
         },
       });
     } catch (error) {
@@ -503,12 +610,10 @@ router.post(
           .json({ status: "error", message: "Không tìm thấy hợp đồng" });
       }
       if (contract.status !== "pending") {
-        return res
-          .status(400)
-          .json({
-            status: "error",
-            message: "Chỉ có hợp đồng chờ phê duyệt mới được từ chối",
-          });
+        return res.status(400).json({
+          status: "error",
+          message: "Chỉ có hợp đồng chờ phê duyệt mới được từ chối",
+        });
       }
 
       contract.status = "rejected";
@@ -520,6 +625,94 @@ router.post(
         performedBy: req.user._id,
         comment: req.body.comment || "Hợp đồng đã bị từ chối.",
       });
+
+      // 🔗 LƯU LÊN BLOCKCHAIN
+      if (blockchainService.isEnabled()) {
+        try {
+          const rejectorName =
+            req.user.fullName || req.user.username || "Unknown";
+          const reason = req.body.comment || "Hợp đồng đã bị từ chối";
+
+          // Kiểm tra contract có tồn tại trên blockchain không
+          const exists = await blockchainService.doesContractExist(
+            contract.contractNumber
+          );
+
+          if (!exists) {
+            console.log(
+              `⚠️ Contract ${contract.contractNumber} chưa có trên blockchain, đang tạo...`
+            );
+
+            // Tạo contract trên blockchain trước
+            const createResult = await blockchainService.createContract({
+              contractNumber: contract.contractNumber,
+              contractName: contract.contractName,
+              contractor: contract.contractor,
+              contractValue: contract.contractValue,
+              currency: contract.currency,
+              startDate: contract.startDate,
+              endDate: contract.endDate,
+              contractType: contract.contractType,
+              department: contract.department,
+              responsiblePerson: contract.responsiblePerson,
+            });
+
+            console.log(
+              `✅ Contract created on blockchain: ${createResult.transactionHash}`
+            );
+            console.log(`⏳ Đợi transaction confirm...`);
+
+            // Đợi transaction confirm
+            const provider = blockchainService.provider;
+            let confirmed = false;
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            while (!confirmed && attempts < maxAttempts) {
+              try {
+                const receipt = await provider.getTransactionReceipt(
+                  createResult.transactionHash
+                );
+                if (receipt && receipt.status === 1) {
+                  confirmed = true;
+                  console.log(
+                    `✅ Transaction confirmed in block ${receipt.blockNumber}`
+                  );
+                } else if (receipt && receipt.status === 0) {
+                  throw new Error("Transaction failed");
+                }
+              } catch (error) {
+                // Transaction chưa được mine
+              }
+
+              if (!confirmed) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                attempts++;
+              }
+            }
+
+            if (!confirmed) {
+              throw new Error("Transaction timeout");
+            }
+          }
+
+          // Từ chối contract trên blockchain
+          const txHash = await blockchainService.rejectContract(
+            contract.contractNumber,
+            rejectorName,
+            reason
+          );
+
+          if (txHash) {
+            contract.blockchainTxHash = txHash;
+            console.log(`✅ Rejection saved to blockchain: ${txHash}`);
+          }
+        } catch (blockchainError) {
+          console.error("Blockchain rejection error:", blockchainError);
+          // Không fail request nếu blockchain lỗi
+          console.log("⚠️ Rejection saved to MongoDB only (blockchain failed)");
+        }
+      }
 
       await AuditLog.createLog({
         type: "contract",
@@ -565,12 +758,10 @@ router.post(
           .json({ status: "error", message: "Không tìm thấy hợp đồng" });
       }
       if (contract.status !== "approved") {
-        return res
-          .status(400)
-          .json({
-            status: "error",
-            message: "Chỉ có hợp đồng đã được phê duyệt mới được kích hoạt",
-          });
+        return res.status(400).json({
+          status: "error",
+          message: "Chỉ có hợp đồng đã được phê duyệt mới được kích hoạt",
+        });
       }
 
       contract.status = "active";

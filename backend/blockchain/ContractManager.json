@@ -127,6 +127,29 @@
     {
       "inputs": [
         {
+          "internalType": "string",
+          "name": "_contractNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_approverName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_comment",
+          "type": "string"
+        }
+      ],
+      "name": "approveContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "_user",
           "type": "address"
@@ -608,6 +631,29 @@
         },
         {
           "internalType": "string",
+          "name": "_rejectorName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_reason",
+          "type": "string"
+        }
+      ],
+      "name": "rejectContract",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_contractNumber",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
           "name": "_contractName",
           "type": "string"
         },
@@ -681,7 +727,7 @@
       "type": "function"
     }
   ],
-  "address": "0x73fdFbB38C4a6a652306C898A99613dF79624353",
+  "address": "0xa6315fC859Bc66C7D8269eE4FA2a3e7ada2ae39f",
   "network": "sepolia",
   "chainId": "11155111"
 }

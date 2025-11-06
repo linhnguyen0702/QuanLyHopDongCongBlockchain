@@ -60,6 +60,7 @@ const contractSchema = new mongoose.Schema(
         "draft",
         "pending",
         "approved",
+        "rejected", // Added rejected status
         "active",
         "completed",
         "cancelled",
