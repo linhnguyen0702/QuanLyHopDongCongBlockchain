@@ -425,7 +425,9 @@ const Approval = () => {
 
       if (!contractExists) {
         // Nếu chưa có trên blockchain, tạo mới trước với status pending
-        const createToast = toast.loading("Contract chưa có trên blockchain, đang tạo...");
+        const createToast = toast.loading(
+          "Contract chưa có trên blockchain, đang tạo..."
+        );
         await userBlockchainService.createContract({
           contractNumber: selectedContract.contractNumber,
           contractName: selectedContract.contractName,
@@ -443,7 +445,9 @@ const Approval = () => {
       }
 
       // 3. User ký transaction từ chối trên blockchain
-      setBlockchainMessage("Vui lòng xác nhận giao dịch từ chối trong MetaMask...");
+      setBlockchainMessage(
+        "Vui lòng xác nhận giao dịch từ chối trong MetaMask..."
+      );
       const signToast = toast.loading("Chờ xác nhận từ MetaMask...");
 
       const txResult = await userBlockchainService.rejectContract(
