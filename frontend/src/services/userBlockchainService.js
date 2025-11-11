@@ -325,6 +325,50 @@ class UserBlockchainService {
   }
 
   /**
+   * Từ chối hợp đồng - User ký transaction
+   */
+  async rejectContract(contractNumber, reason = "Từ chối") {
+    if (!this.contract) {
+      await this.connectWallet();
+    }
+
+    try {
+      const userAddress = await this.signer.getAddress();
+      console.log("❌ Đang từ chối contract:", contractNumber);
+      console.log("👤 User address:", userAddress);
+
+      // Gọi rejectContract từ smart contract
+      const tx = await this.contract.rejectContract(
+        contractNumber,
+        userAddress, // Rejector name (dùng địa chỉ ví)
+        reason
+      );
+
+      console.log("⏳ Transaction sent:", tx.hash);
+      console.log("⏳ Waiting for confirmation...");
+
+      const receipt = await tx.wait();
+      console.log("✅ Contract rejected on blockchain!");
+      console.log("📝 Transaction hash:", receipt.hash);
+
+      return {
+        transactionHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        contractAddress: await this.contract.getAddress(),
+        from: userAddress,
+      };
+    } catch (error) {
+      console.error("❌ Reject contract error:", error);
+
+      if (error.code === 4001 || error.code === "ACTION_REJECTED") {
+        throw new Error("Bạn đã từ chối transaction");
+      }
+
+      throw error;
+    }
+  }
+
+  /**
    * Kiểm tra số dư ETH của user
    */
   async getBalance() {

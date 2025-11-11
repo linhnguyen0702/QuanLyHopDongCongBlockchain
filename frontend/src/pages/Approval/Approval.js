@@ -308,31 +308,154 @@ const Approval = () => {
   const confirmApprove = async () => {
     // USER WALLET SIGNING - User ký transaction phê duyệt qua MetaMask
     try {
+      // Kiểm tra xem contract đã có phê duyệt trước đó chưa
+      const currentApprovals = selectedContract.approvals || [];
+      const isSecondApproval = currentApprovals.length >= 1;
+
+      // CHỈ người phê duyệt cuối cùng mới cần ký blockchain
+      // Người đầu tiên chỉ lưu vào MongoDB
+      let blockchainData = null;
+
+      if (isSecondApproval) {
+        // Đây là approval thứ 2 → CẦN ký blockchain để chuyển status "pending" → "approved"
+        setShowBlockchainProgress(true);
+        setBlockchainMessage("Đang kết nối MetaMask...");
+
+        // 1. Kết nối ví nếu chưa kết nối
+        if (!userAddress) {
+          const loadingToast = toast.loading("Vui lòng kết nối MetaMask...");
+          const address = await userBlockchainService.connectWallet();
+          setUserAddress(address);
+          toast.success("Đã kết nối ví!", { id: loadingToast });
+        }
+
+        // 2. Kiểm tra contract có tồn tại trên blockchain chưa
+        setBlockchainMessage("Kiểm tra contract trên blockchain...");
+        const contractExists = await userBlockchainService.doesContractExist(
+          selectedContract.contractNumber
+        );
+
+        if (!contractExists) {
+          // Nếu chưa có trên blockchain, tạo mới trước
+          const createToast = toast.loading(
+            "Contract chưa có trên blockchain, đang tạo..."
+          );
+          await userBlockchainService.createContract({
+            contractNumber: selectedContract.contractNumber,
+            contractName: selectedContract.contractName,
+            contractor: selectedContract.contractor,
+            contractValue: selectedContract.contractValue,
+            currency: selectedContract.currency || "VND",
+            startDate: selectedContract.startDate,
+            endDate: selectedContract.endDate,
+            contractType: selectedContract.contractType,
+            status: "pending", // Tạo với status pending
+            department: selectedContract.department,
+            responsiblePerson: selectedContract.responsiblePerson,
+          });
+          toast.success("Đã tạo contract trên blockchain!", {
+            id: createToast,
+          });
+        }
+
+        // 3. User ký transaction phê duyệt trên blockchain
+        setBlockchainMessage("Vui lòng xác nhận giao dịch trong MetaMask...");
+        const signToast = toast.loading("Chờ xác nhận từ MetaMask...");
+
+        const txResult = await userBlockchainService.approveContract(
+          selectedContract.contractNumber,
+          comment || "Đã phê duyệt"
+        );
+
+        toast.success("Đã ký giao dịch thành công!", { id: signToast });
+        setBlockchainMessage("Đang lưu thông tin phê duyệt...");
+
+        blockchainData = {
+          transactionHash: txResult.transactionHash,
+          blockNumber: txResult.blockNumber,
+          contractAddress: txResult.contractAddress,
+        };
+      }
+
+      // 4. Gửi thông tin phê duyệt về backend (có hoặc không có blockchain data)
+      approveContractMutation.mutate({
+        contractId: selectedContract._id,
+        comment: comment,
+        ...(blockchainData && { blockchain: blockchainData }),
+      });
+    } catch (error) {
+      setShowBlockchainProgress(false);
+      console.error("User wallet signing error:", error);
+
+      if (error.code === 4001) {
+        toast.error("Bạn đã từ chối giao dịch trong MetaMask");
+      } else if (error.message?.includes("insufficient funds")) {
+        toast.error("Không đủ ETH để trả phí gas");
+      } else if (error.message?.includes("Contract must be in pending")) {
+        toast.error(
+          "Hợp đồng đã được phê duyệt lần 1 rồi. Cần người thứ 2 phê duyệt tiếp!"
+        );
+      } else {
+        toast.error(
+          error.message || "Không thể thực hiện giao dịch blockchain"
+        );
+      }
+    }
+  };
+
+  const confirmReject = async () => {
+    // USER WALLET SIGNING - User ký transaction từ chối qua MetaMask
+    try {
       setShowBlockchainProgress(true);
       setBlockchainMessage("Đang kết nối MetaMask...");
 
       // 1. Kết nối ví nếu chưa kết nối
       if (!userAddress) {
-        toast.loading("Vui lòng kết nối MetaMask...", { id: "wallet-connect" });
+        const loadingToast = toast.loading("Vui lòng kết nối MetaMask...");
         const address = await userBlockchainService.connectWallet();
         setUserAddress(address);
-        toast.success("Đã kết nối ví!", { id: "wallet-connect" });
+        toast.success("Đã kết nối ví!", { id: loadingToast });
       }
 
-      // 2. User ký transaction phê duyệt trên blockchain
-      setBlockchainMessage("Vui lòng xác nhận giao dịch trong MetaMask...");
-      toast.loading("Chờ xác nhận từ MetaMask...", { id: "tx-sign" });
-
-      const txResult = await userBlockchainService.approveContract(
-        selectedContract.contractNumber,
-        comment || "Đã phê duyệt"
+      // 2. Kiểm tra contract có tồn tại trên blockchain chưa
+      setBlockchainMessage("Kiểm tra contract trên blockchain...");
+      const contractExists = await userBlockchainService.doesContractExist(
+        selectedContract.contractNumber
       );
 
-      toast.success("Đã ký giao dịch thành công!", { id: "tx-sign" });
-      setBlockchainMessage("Đang lưu thông tin phê duyệt...");
+      if (!contractExists) {
+        // Nếu chưa có trên blockchain, tạo mới trước với status pending
+        const createToast = toast.loading("Contract chưa có trên blockchain, đang tạo...");
+        await userBlockchainService.createContract({
+          contractNumber: selectedContract.contractNumber,
+          contractName: selectedContract.contractName,
+          contractor: selectedContract.contractor,
+          contractValue: selectedContract.contractValue,
+          currency: selectedContract.currency || "VND",
+          startDate: selectedContract.startDate,
+          endDate: selectedContract.endDate,
+          contractType: selectedContract.contractType,
+          status: "pending", // Tạo với status pending
+          department: selectedContract.department,
+          responsiblePerson: selectedContract.responsiblePerson,
+        });
+        toast.success("Đã tạo contract trên blockchain!", { id: createToast });
+      }
 
-      // 3. Gửi thông tin phê duyệt + transaction hash về backend
-      approveContractMutation.mutate({
+      // 3. User ký transaction từ chối trên blockchain
+      setBlockchainMessage("Vui lòng xác nhận giao dịch từ chối trong MetaMask...");
+      const signToast = toast.loading("Chờ xác nhận từ MetaMask...");
+
+      const txResult = await userBlockchainService.rejectContract(
+        selectedContract.contractNumber,
+        comment || "Từ chối"
+      );
+
+      toast.success("Đã ký giao dịch từ chối thành công!", { id: signToast });
+      setBlockchainMessage("Đang lưu thông tin từ chối...");
+
+      // 4. Gửi thông tin từ chối + transaction hash về backend
+      rejectContractMutation.mutate({
         contractId: selectedContract._id,
         comment: comment,
         blockchain: {
@@ -349,19 +472,14 @@ const Approval = () => {
         toast.error("Bạn đã từ chối giao dịch trong MetaMask");
       } else if (error.message?.includes("insufficient funds")) {
         toast.error("Không đủ ETH để trả phí gas");
+      } else if (error.message?.includes("Contract must be in pending")) {
+        toast.error("Hợp đồng không ở trạng thái pending. Không thể từ chối!");
       } else {
         toast.error(
           error.message || "Không thể thực hiện giao dịch blockchain"
         );
       }
     }
-  };
-
-  const confirmReject = () => {
-    rejectContractMutation.mutate({
-      contractId: selectedContract._id,
-      comment: comment,
-    });
   };
 
   const handleDialogClose = () => {

@@ -677,7 +677,13 @@ router.post(
       });
 
       // 🔗 LƯU LÊN BLOCKCHAIN
-      if (blockchainService.isEnabled()) {
+      // Nếu frontend đã gửi blockchain data (user đã ký), dùng luôn
+      if (req.body.blockchain) {
+        console.log("✅ Using blockchain data from frontend (user signed)");
+        contract.blockchainTxHash = req.body.blockchain.transactionHash;
+        contract.blockchainBlock = req.body.blockchain.blockNumber;
+      } else if (blockchainService.isEnabled()) {
+        // Nếu không có blockchain data từ frontend, backend ký (legacy mode)
         try {
           const rejectorName =
             req.user.fullName || req.user.username || "Unknown";
