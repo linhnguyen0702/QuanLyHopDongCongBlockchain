@@ -23,6 +23,8 @@ import { useMutation, useQueryClient, useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { contractAPI, contractorAPI } from "../../services/api";
 import BlockchainProgressNotification from "../../components/Common/BlockchainProgressNotification";
+import TransactionSuccessDialog from "../../components/Blockchain/TransactionSuccessDialog";
+import userBlockchainService from "../../services/userBlockchainService";
 import toast from "react-hot-toast";
 
 const validationSchema = yup.object({
@@ -47,7 +49,12 @@ const CreateContract = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showBlockchainProgress, setShowBlockchainProgress] = useState(false);
+  const [transactionDialog, setTransactionDialog] = useState({
+    open: false,
+    transactionHash: null,
+  });
   const [blockchainMessage, setBlockchainMessage] = useState("");
+  const [userAddress, setUserAddress] = useState(null);
 
   // Fetch danh sách nhà thầu (ưu tiên trạng thái active)
   const { data: contractorsData, isLoading: contractorsLoading } = useQuery(
@@ -82,7 +89,59 @@ const CreateContract = () => {
         endDate: values.endDate ? values.endDate.toISOString() : undefined,
       };
 
-      createContractMutation.mutate(contractData);
+      // USER WALLET SIGNING - Gọi MetaMask để user ký transaction
+      try {
+        setShowBlockchainProgress(true);
+        setBlockchainMessage("Đang kết nối MetaMask...");
+
+        // 1. Kết nối ví nếu chưa kết nối
+        if (!userAddress) {
+          toast.loading("Vui lòng kết nối MetaMask...", {
+            id: "wallet-connect",
+          });
+          const address = await userBlockchainService.connectWallet();
+          setUserAddress(address);
+          toast.success("Đã kết nối ví!", { id: "wallet-connect" });
+        }
+
+        // 2. User ký transaction trên blockchain
+        setBlockchainMessage("Vui lòng xác nhận giao dịch trong MetaMask...");
+        toast.loading("Chờ xác nhận từ MetaMask...", { id: "tx-sign" });
+
+        const txResult = await userBlockchainService.createContract(
+          contractData
+        );
+
+        toast.success("Đã ký giao dịch thành công!", { id: "tx-sign" });
+        setBlockchainMessage("Đang lưu thông tin hợp đồng...");
+
+        // 3. Gửi thông tin + transaction hash về backend
+        const dataWithBlockchain = {
+          ...contractData,
+          blockchain: {
+            transactionHash: txResult.transactionHash,
+            blockNumber: txResult.blockNumber,
+            contractAddress: txResult.contractAddress,
+          },
+        };
+
+        createContractMutation.mutate(dataWithBlockchain);
+      } catch (error) {
+        setShowBlockchainProgress(false);
+        console.error("User wallet signing error:", error);
+
+        if (error.code === 4001) {
+          toast.error("Bạn đã từ chối giao dịch trong MetaMask");
+        } else if (error.message?.includes("insufficient funds")) {
+          toast.error(
+            "Không đủ ETH để trả phí gas. Vui lòng nạp thêm Sepolia ETH"
+          );
+        } else {
+          toast.error(
+            error.message || "Không thể thực hiện giao dịch blockchain"
+          );
+        }
+      }
     },
   });
 
@@ -90,33 +149,46 @@ const CreateContract = () => {
     (contractData) => contractAPI.createContract(contractData),
     {
       onMutate: (variables) => {
-        // Chỉ hiển thị notification nếu không phải draft
-        if (variables.status !== "draft") {
-          setShowBlockchainProgress(true);
-          setBlockchainMessage("Đang tạo hợp đồng và lưu lên blockchain...");
-        }
+        // Không cần hiển thị progress vì đã xử lý ở onSubmit
       },
       onSuccess: (response, variables) => {
-        // Ẩn notification ngay lập tức
+        // Ẩn notification
         setShowBlockchainProgress(false);
 
         console.log("Create contract response:", response.data);
         queryClient.invalidateQueries("contracts");
-        const isDraft = variables.status === "draft";
 
-        if (isDraft) {
-          toast.success("Lưu bản nháp thành công!");
+        const contract = response.data.data.contract;
+
+        // Transaction đã được xử lý ở onSubmit, chỉ cần hiển thị kết quả
+        if (contract?.blockchain?.transactionHash) {
+          console.log(
+            "✅ Contract saved with blockchain transaction:",
+            contract.blockchain.transactionHash
+          );
+
+          toast.success("Tạo hợp đồng và lưu lên blockchain thành công!", {
+            duration: 3000,
+            id: `create-contract-${contract._id}`,
+          });
+
+          // Mở dialog chi tiết transaction
+          setTransactionDialog({
+            open: true,
+            transactionHash: contract.blockchain.transactionHash,
+          });
         } else {
-          toast.success("Tạo hợp đồng thành công!\n✅ Đã lưu lên blockchain!");
+          toast.success("Tạo hợp đồng thành công!");
+          // Navigate ngay nếu không có blockchain
+          setTimeout(() => {
+            navigate(`/contracts/${response.data.data.contract._id}`);
+          }, 1000);
         }
-
-        navigate(`/contracts/${response.data.data.contract._id}`);
       },
       onError: (error, variables) => {
         setShowBlockchainProgress(false);
         console.error("Create contract error:", error);
         console.error("Error response:", error.response?.data);
-        const isDraft = variables.status === "draft";
 
         // Hiển thị chi tiết lỗi validation nếu có
         if (
@@ -128,8 +200,7 @@ const CreateContract = () => {
           });
         } else {
           toast.error(
-            error.response?.data?.message ||
-              (isDraft ? "Lưu bản nháp thất bại!" : "Tạo hợp đồng thất bại!")
+            error.response?.data?.message || "Tạo hợp đồng thất bại!"
           );
         }
       },
@@ -477,6 +548,20 @@ const CreateContract = () => {
         show={showBlockchainProgress}
         message={blockchainMessage}
         onClose={() => setShowBlockchainProgress(false)}
+      />
+
+      {/* Transaction Success Dialog */}
+      <TransactionSuccessDialog
+        open={transactionDialog.open}
+        onClose={() => {
+          setTransactionDialog({ open: false, transactionHash: null });
+          // Navigate sau khi đóng dialog
+          navigate(`/contracts`);
+        }}
+        transactionHash={transactionDialog.transactionHash}
+        title="Tạo hợp đồng thành công"
+        message="Hợp đồng đã được lưu lên blockchain"
+        network="sepolia"
       />
     </LocalizationProvider>
   );

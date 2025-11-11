@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -24,6 +24,7 @@ import { useQuery } from "react-query";
 import { contractAPI } from "../../services/api";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import BlockchainInfo from "../../components/Blockchain/BlockchainInfo";
+import BlockchainNotification from "../../components/Blockchain/BlockchainNotification";
 import { useSettings } from "../../contexts/SettingsContext"; // Import the hook
 
 const StatusChip = ({ status }) => {
@@ -94,6 +95,7 @@ const ContractDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { formatDate, formatCurrency } = useSettings(); // Use the global formatters
+  const [showBlockchainNotif, setShowBlockchainNotif] = useState(true);
 
   const {
     data: contractData,
@@ -144,6 +146,21 @@ const ContractDetail = () => {
           </Button>
         </Box>
       </Box>
+
+      {/* Blockchain Notification - Show if transaction exists (Alert only, no toast) */}
+      {contract.blockchain?.enabled &&
+        contract.blockchain?.transactionHash &&
+        showBlockchainNotif && (
+          <BlockchainNotification
+            transaction={{
+              transactionHash: contract.blockchain.transactionHash,
+              blockNumber: contract.blockchain.blockNumber,
+              network: contract.blockchain.network,
+            }}
+            onClose={() => setShowBlockchainNotif(false)}
+            showToast={false}
+          />
+        )}
 
       <Grid container spacing={3}>
         {/* Contract Information */}

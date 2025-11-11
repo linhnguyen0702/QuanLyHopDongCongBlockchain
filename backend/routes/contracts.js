@@ -144,15 +144,31 @@ router.post(
       await contract.save();
       await contract.populate("createdBy", "username fullName email");
 
-      res.status(201).json({
-        status: "success",
-        message: "Tạo hợp đồng thành công",
-        data: { contract },
-      });
+      // ✅ XỬ LÝ BLOCKCHAIN
+      // Nếu frontend đã gửi blockchain data (user đã ký), chỉ cần lưu vào DB
+      if (req.body.blockchain && req.body.blockchain.transactionHash) {
+        console.log(
+          `✅ Frontend đã xử lý blockchain: ${req.body.blockchain.transactionHash}`
+        );
+        contract.blockchain = {
+          enabled: true,
+          transactionHash: req.body.blockchain.transactionHash,
+          blockNumber: req.body.blockchain.blockNumber,
+          contractAddress: req.body.blockchain.contractAddress,
+          network: "sepolia",
+          createdOnChain: new Date(),
+          lastSyncedAt: new Date(),
+        };
+        await contract.save();
+      }
+      // Nếu không có blockchain data từ frontend, dùng backend service (fallback)
+      else if (blockchainService.isEnabled()) {
+        try {
+          console.log(
+            `🔄 Đang lưu hợp đồng ${contract.contractNumber} lên blockchain (backend wallet)...`
+          );
 
-      if (blockchainService.isEnabled()) {
-        blockchainService
-          .createContract({
+          const blockchainResult = await blockchainService.createContract({
             contractNumber: contract.contractNumber,
             contractName: contract.contractName,
             contractor: contract.contractor,
@@ -163,31 +179,38 @@ router.post(
             contractType: contract.contractType,
             department: contract.department,
             responsiblePerson: contract.responsiblePerson,
-          })
-          .then(async (blockchainResult) => {
-            if (blockchainResult) {
-              contract.blockchain = {
-                enabled: true,
-                transactionHash: blockchainResult.transactionHash,
-                blockNumber: blockchainResult.blockNumber,
-                contractAddress: blockchainResult.contractAddress,
-                network: blockchainResult.network,
-                createdOnChain: new Date(),
-                lastSyncedAt: new Date(),
-              };
-              await contract.save();
-              console.log(
-                `✅ Blockchain sync completed for ${contract.contractNumber}`
-              );
-            }
-          })
-          .catch((blockchainError) => {
-            console.error(
-              "❌ Blockchain error (non-critical):",
-              blockchainError
-            );
           });
+
+          if (blockchainResult) {
+            contract.blockchain = {
+              enabled: true,
+              transactionHash: blockchainResult.transactionHash,
+              blockNumber: blockchainResult.blockNumber,
+              contractAddress: blockchainResult.contractAddress,
+              network: blockchainResult.network,
+              createdOnChain: new Date(),
+              lastSyncedAt: new Date(),
+            };
+            await contract.save();
+            console.log(
+              `✅ Blockchain sync completed for ${contract.contractNumber}`
+            );
+            console.log(
+              `📝 Transaction hash: ${blockchainResult.transactionHash}`
+            );
+          }
+        } catch (blockchainError) {
+          console.error("❌ Blockchain error (non-critical):", blockchainError);
+          // Không throw error, chỉ log - vẫn trả về contract đã tạo
+        }
       }
+
+      // ✅ BÂY GIỜ MỚI TRẢ RESPONSE (đã có blockchain data)
+      res.status(201).json({
+        status: "success",
+        message: "Tạo hợp đồng thành công",
+        data: { contract },
+      });
     } catch (error) {
       console.error("Lỗi khi tạo hợp đồng:", error);
       if (error.code === 11000) {
@@ -272,90 +295,113 @@ router.put(
         { path: "approvedBy", select: "username fullName email" },
       ]);
 
+      // ✅ XỬ LÝ BLOCKCHAIN
+      // Nếu frontend đã gửi blockchain data (user đã ký), chỉ cần lưu vào DB
+      if (req.body.blockchain && req.body.blockchain.transactionHash) {
+        console.log(
+          `✅ Frontend đã xử lý blockchain: ${req.body.blockchain.transactionHash}`
+        );
+        updatedContract.blockchain = {
+          enabled: true,
+          transactionHash: req.body.blockchain.transactionHash,
+          blockNumber: req.body.blockchain.blockNumber,
+          contractAddress: req.body.blockchain.contractAddress,
+          network: "sepolia",
+          lastSyncedAt: new Date(),
+        };
+        // Giữ nguyên createdOnChain nếu đã có
+        if (contractToUpdate.blockchain?.createdOnChain) {
+          updatedContract.blockchain.createdOnChain =
+            contractToUpdate.blockchain.createdOnChain;
+        } else {
+          updatedContract.blockchain.createdOnChain = new Date();
+        }
+        await updatedContract.save();
+      }
+      // Nếu không có blockchain data từ frontend, dùng backend service (fallback)
+      else if (blockchainService.isEnabled()) {
+        try {
+          const contractDataForChain = {
+            contractNumber: updatedContract.contractNumber,
+            contractName: updatedContract.contractName,
+            contractor: updatedContract.contractor,
+            contractValue: updatedContract.contractValue,
+            currency: updatedContract.currency,
+            startDate: updatedContract.startDate,
+            endDate: updatedContract.endDate,
+            contractType: updatedContract.contractType,
+            department: updatedContract.department,
+            responsiblePerson: updatedContract.responsiblePerson,
+          };
+
+          // If contract is not yet on the blockchain, create it. Otherwise, update it.
+          if (
+            !updatedContract.blockchain ||
+            !updatedContract.blockchain.enabled
+          ) {
+            console.log(
+              `🔄 Creating contract ${updatedContract.contractNumber} on blockchain for the first time (backend wallet).`
+            );
+
+            const blockchainResult = await blockchainService.createContract(
+              contractDataForChain
+            );
+
+            if (blockchainResult) {
+              updatedContract.blockchain = {
+                enabled: true,
+                transactionHash: blockchainResult.transactionHash,
+                blockNumber: blockchainResult.blockNumber,
+                contractAddress: blockchainResult.contractAddress,
+                network: blockchainResult.network,
+                createdOnChain: new Date(),
+                lastSyncedAt: new Date(),
+              };
+              await updatedContract.save();
+              console.log(
+                `✅ Blockchain CREATION sync completed for ${updatedContract.contractNumber}`
+              );
+              console.log(
+                `📝 Transaction hash: ${blockchainResult.transactionHash}`
+              );
+            }
+          } else {
+            console.log(
+              `🔄 Updating contract ${updatedContract.contractNumber} on blockchain (backend wallet).`
+            );
+
+            const blockchainResult = await blockchainService.updateContract(
+              updatedContract.contractNumber,
+              contractDataForChain
+            );
+
+            if (blockchainResult && blockchainResult.success) {
+              updatedContract.blockchain.transactionHash =
+                blockchainResult.transactionHash;
+              updatedContract.blockchain.blockNumber =
+                blockchainResult.blockNumber;
+              updatedContract.blockchain.lastSyncedAt = new Date();
+              await updatedContract.save();
+              console.log(
+                `✅ Blockchain UPDATE sync completed for ${updatedContract.contractNumber}`
+              );
+              console.log(
+                `📝 Transaction hash: ${blockchainResult.transactionHash}`
+              );
+            }
+          }
+        } catch (blockchainError) {
+          console.error("❌ Blockchain error (non-critical):", blockchainError);
+          // Không throw error - vẫn trả về contract đã update
+        }
+      }
+
+      // ✅ BÂY GIỜ MỚI TRẢ RESPONSE (đã có blockchain data)
       res.json({
         status: "success",
         message: "Cập nhật hợp đồng thành công",
         data: { contract: updatedContract },
       });
-
-      // Sync with blockchain asynchronously (non-blocking)
-      if (blockchainService.isEnabled()) {
-        const contractDataForChain = {
-          contractNumber: updatedContract.contractNumber,
-          contractName: updatedContract.contractName,
-          contractor: updatedContract.contractor,
-          contractValue: updatedContract.contractValue,
-          currency: updatedContract.currency,
-          startDate: updatedContract.startDate,
-          endDate: updatedContract.endDate,
-          contractType: updatedContract.contractType,
-          department: updatedContract.department,
-          responsiblePerson: updatedContract.responsiblePerson,
-        };
-
-        // If contract is not yet on the blockchain, create it. Otherwise, update it.
-        if (
-          !updatedContract.blockchain ||
-          !updatedContract.blockchain.enabled
-        ) {
-          console.log(
-            `Creating contract ${updatedContract.contractNumber} on blockchain for the first time.`
-          );
-          blockchainService
-            .createContract(contractDataForChain)
-            .then(async (blockchainResult) => {
-              if (blockchainResult) {
-                updatedContract.blockchain = {
-                  enabled: true,
-                  transactionHash: blockchainResult.transactionHash,
-                  blockNumber: blockchainResult.blockNumber,
-                  contractAddress: blockchainResult.contractAddress,
-                  network: blockchainResult.network,
-                  createdOnChain: new Date(),
-                  lastSyncedAt: new Date(),
-                };
-                await updatedContract.save();
-                console.log(
-                  `✅ Blockchain CREATION sync completed for ${updatedContract.contractNumber}`
-                );
-              }
-            })
-            .catch((blockchainError) => {
-              console.error(
-                "❌ Blockchain creation error (non-critical):",
-                blockchainError
-              );
-            });
-        } else {
-          console.log(
-            `Updating contract ${updatedContract.contractNumber} on blockchain.`
-          );
-          blockchainService
-            .updateContract(
-              updatedContract.contractNumber,
-              contractDataForChain
-            )
-            .then(async (blockchainResult) => {
-              if (blockchainResult && blockchainResult.success) {
-                updatedContract.blockchain.transactionHash =
-                  blockchainResult.transactionHash;
-                updatedContract.blockchain.blockNumber =
-                  blockchainResult.blockNumber;
-                updatedContract.blockchain.lastSyncedAt = new Date();
-                await updatedContract.save();
-                console.log(
-                  `✅ Blockchain UPDATE sync completed for ${updatedContract.contractNumber}`
-                );
-              }
-            })
-            .catch((blockchainError) => {
-              console.error(
-                "❌ Blockchain update error (non-critical):",
-                blockchainError
-              );
-            });
-        }
-      }
     } catch (error) {
       console.error("Lỗi khi cập nhật hợp đồng:", error);
       res.status(500).json({
@@ -429,7 +475,15 @@ router.post(
         });
 
         // 🔗 LƯU LÊN BLOCKCHAIN
-        if (blockchainService.isEnabled()) {
+        // Nếu frontend đã gửi blockchain data (user đã ký), chỉ cần lưu vào DB
+        if (req.body.blockchain && req.body.blockchain.transactionHash) {
+          console.log(
+            `✅ Frontend đã xử lý blockchain approval: ${req.body.blockchain.transactionHash}`
+          );
+          contract.blockchainTxHash = req.body.blockchain.transactionHash;
+        }
+        // Nếu không có blockchain data từ frontend, dùng backend service (fallback)
+        else if (blockchainService.isEnabled()) {
           try {
             const approverName =
               req.user.fullName || req.user.username || "Unknown";
@@ -568,20 +622,16 @@ router.post(
         { path: "approvedBy", select: "username fullName email" },
       ]);
 
+      // ✅ TRẢ RESPONSE SAU KHI ĐÃ CÓ BLOCKCHAIN DATA
       res.json({
         status: "success",
         message: message,
-        notification:
-          approvalCount >= 2
-            ? "Hợp đồng đã được phê duyệt và đang lưu lên blockchain. Vui lòng đợi 15-20 giây..."
-            : null,
         data: {
           contract,
           approvalCount: approvalCount,
           requiredApprovals: 2,
           isFullyApproved: approvalCount >= 2,
-          blockchainPending:
-            approvalCount >= 2 && blockchainService.isEnabled(),
+          blockchainCompleted: !!contract.blockchainTxHash, // ✅ Đã xử lý xong blockchain
         },
       });
     } catch (error) {

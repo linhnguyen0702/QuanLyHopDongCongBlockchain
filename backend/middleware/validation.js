@@ -122,6 +122,11 @@ const schemas = {
       "any.required": "Người phụ trách là bắt buộc",
     }),
     attachments: Joi.array().items(Joi.string()).optional(),
+    blockchain: Joi.object({
+      transactionHash: Joi.string().optional(),
+      blockNumber: Joi.number().optional(),
+      contractAddress: Joi.string().optional(),
+    }).optional(),
   }),
 
   updateContract: Joi.object({
@@ -168,6 +173,11 @@ const schemas = {
       "string.max": "Tên người phụ trách không được vượt quá 100 ký tự",
     }),
     attachments: Joi.array().items(Joi.string()).optional(),
+    blockchain: Joi.object({
+      transactionHash: Joi.string().optional(),
+      blockNumber: Joi.number().optional(),
+      contractAddress: Joi.string().optional(),
+    }).optional(),
   }),
 
   // Contractor schemas

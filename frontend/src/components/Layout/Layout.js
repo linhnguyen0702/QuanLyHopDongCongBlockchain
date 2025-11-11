@@ -319,7 +319,7 @@ const Layout = ({ children }) => {
         sx={{
           width: { sm: `calc(100% - ${actualDrawerWidth}px)` },
           left: { sm: `${actualDrawerWidth}px` },
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
           color: "text.primary",
           boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
         }}
@@ -344,17 +344,24 @@ const Layout = ({ children }) => {
               sx={{
                 minWidth: 300,
                 "& .MuiOutlinedInput-root": {
-                  backgroundColor: "grey.50",
+                  backgroundColor: "action.hover",
                   borderRadius: 2,
                   "& fieldset": {
-                    borderColor: "grey.300",
+                    borderColor: "divider",
                   },
                   "&:hover fieldset": {
-                    borderColor: "grey.400",
+                    borderColor: "text.secondary",
                   },
                   "&.Mui-focused fieldset": {
                     borderColor: "primary.main",
                   },
+                },
+                "& .MuiOutlinedInput-input": {
+                  color: "text.primary",
+                },
+                "& .MuiOutlinedInput-input::placeholder": {
+                  color: "text.secondary",
+                  opacity: 0.7,
                 },
               }}
               InputProps={{
@@ -528,7 +535,7 @@ const Layout = ({ children }) => {
           p: 3,
           width: { sm: `calc(100% - ${actualDrawerWidth}px)` },
           mt: 8,
-          backgroundColor: "grey.50",
+          backgroundColor: "background.default",
           minHeight: "calc(100vh - 64px)",
           transition: "width 0.3s ease, margin-left 0.3s ease",
         }}

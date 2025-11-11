@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { ethers } from "ethers";
 import toast from "react-hot-toast";
 
@@ -64,7 +71,11 @@ export const BlockchainProvider = ({ children }) => {
               {
                 chainId: "0xaa36a7",
                 chainName: "Sepolia Test Network",
-                nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
+                nativeCurrency: {
+                  name: "Sepolia ETH",
+                  symbol: "ETH",
+                  decimals: 18,
+                },
                 rpcUrls: ["https://sepolia.infura.io/v3/"],
                 blockExplorerUrls: ["https://sepolia.etherscan.io"],
               },
@@ -93,7 +104,18 @@ export const BlockchainProvider = ({ children }) => {
 
     setIsConnecting(true);
     try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      // First, try to get accounts without requesting (check if already connected)
+      let accounts = await window.ethereum.request({
+        method: "eth_accounts",
+      });
+
+      // If no accounts, request connection
+      if (accounts.length === 0) {
+        accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+      }
+
       const web3Provider = new ethers.BrowserProvider(window.ethereum);
       const web3Signer = await web3Provider.getSigner();
       const web3Network = await web3Provider.getNetwork();
@@ -101,7 +123,10 @@ export const BlockchainProvider = ({ children }) => {
       setAccount(accounts[0]);
       setProvider(web3Provider);
       setSigner(web3Signer);
-      setNetwork({ name: web3Network.name, chainId: Number(web3Network.chainId) });
+      setNetwork({
+        name: web3Network.name,
+        chainId: Number(web3Network.chainId),
+      });
       setIsConnected(true);
       await getBalance(accounts[0], web3Provider);
 
@@ -117,7 +142,19 @@ export const BlockchainProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error connecting wallet:", error);
-      toast.error("Không thể kết nối ví");
+
+      // Handle specific error cases
+      if (error.code === -32002) {
+        toast.error("Vui lòng mở MetaMask và chấp nhận yêu cầu kết nối!");
+      } else if (error.code === 4001) {
+        toast.error("Bạn đã từ chối kết nối ví");
+      } else if (error.message?.includes("locked")) {
+        toast.error(
+          "MetaMask đang bị khóa. Vui lòng mở MetaMask và nhập mật khẩu!"
+        );
+      } else {
+        toast.error("Không thể kết nối ví. Vui lòng mở MetaMask và thử lại!");
+      }
     } finally {
       setIsConnecting(false);
     }
@@ -132,7 +169,7 @@ export const BlockchainProvider = ({ children }) => {
         disconnectWallet();
       } else {
         connectWallet(); // Re-connect to get new account info and balance
-        toast.info("Đã chuyển tài khoản");
+        toast("Đã chuyển tài khoản", { icon: "ℹ️" });
       }
     };
 
@@ -153,7 +190,9 @@ export const BlockchainProvider = ({ children }) => {
   useEffect(() => {
     const checkForExistingConnection = async () => {
       if (window.ethereum) {
-        const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        const accounts = await window.ethereum.request({
+          method: "eth_accounts",
+        });
         if (accounts.length > 0) {
           await connectWallet();
         }
@@ -165,24 +204,35 @@ export const BlockchainProvider = ({ children }) => {
 
   const formatAddress = (address) => {
     if (!address) return "";
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    return `${address.substring(0, 6)}...${address.substring(
+      address.length - 4
+    )}`;
   };
 
   const viewTransactionOnExplorer = (txHash) => {
     if (!network) return;
-    const explorerUrl = network.chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io";
+    const explorerUrl =
+      network.chainId === 11155111
+        ? "https://sepolia.etherscan.io"
+        : "https://etherscan.io";
     window.open(`${explorerUrl}/tx/${txHash}`, "_blank");
   };
 
   const viewContractOnExplorer = (contractAddress) => {
     if (!network) return;
-    const explorerUrl = network.chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io";
+    const explorerUrl =
+      network.chainId === 11155111
+        ? "https://sepolia.etherscan.io"
+        : "https://etherscan.io";
     window.open(`${explorerUrl}/address/${contractAddress}`, "_blank");
   };
 
   const viewAddressOnExplorer = (address) => {
     if (!network) return;
-    const explorerUrl = network.chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io";
+    const explorerUrl =
+      network.chainId === 11155111
+        ? "https://sepolia.etherscan.io"
+        : "https://etherscan.io";
     window.open(`${explorerUrl}/address/${address}`, "_blank");
   };
 

@@ -41,6 +41,7 @@ import { useQuery, useMutation, useQueryClient } from "react-query";
 import { contractAPI } from "../../services/api";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import BlockchainProgressNotification from "../../components/Common/BlockchainProgressNotification";
+import userBlockchainService from "../../services/userBlockchainService";
 import { useAuth } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
 
@@ -179,6 +180,7 @@ const Approval = () => {
   const [comment, setComment] = useState("");
   const [showBlockchainProgress, setShowBlockchainProgress] = useState(false);
   const [blockchainMessage, setBlockchainMessage] = useState("");
+  const [userAddress, setUserAddress] = useState(null);
 
   const queryClient = useQueryClient();
   const { isManager } = useAuth();
@@ -202,31 +204,39 @@ const Approval = () => {
   );
 
   const approveContractMutation = useMutation(
-    ({ contractId, comment }) =>
-      contractAPI.approveContract(contractId, comment),
+    ({ contractId, comment, blockchain }) =>
+      contractAPI.approveContract(contractId, comment, blockchain),
     {
       onMutate: () => {
-        // Hiển thị notification blockchain đang xử lý
-        setShowBlockchainProgress(true);
-        setBlockchainMessage(
-          "Đang phê duyệt hợp đồng và lưu lên blockchain..."
-        );
+        // Progress đã được hiển thị ở confirmApprove
       },
       onSuccess: (response) => {
-        // Ẩn notification ngay lập tức
         setShowBlockchainProgress(false);
 
         queryClient.invalidateQueries("contracts-approval");
         queryClient.invalidateQueries("contracts");
 
-        const message =
-          response?.data?.message || "Phê duyệt hợp đồng thành công!";
+        const contract = response?.data?.data?.contract;
 
-        // Kiểm tra nếu có blockchain pending
-        if (response?.data?.data?.blockchainPending) {
-          toast.success(message + "\n✅ Đã lưu lên blockchain thành công!");
+        if (
+          contract?.blockchainTxHash ||
+          contract?.blockchain?.transactionHash
+        ) {
+          const txHash =
+            contract.blockchainTxHash || contract.blockchain.transactionHash;
+          console.log("✅ Contract approved with blockchain:", txHash);
+
+          toast.success(
+            "Phê duyệt hợp đồng và lưu lên blockchain thành công!",
+            {
+              duration: 3000,
+              id: `approve-contract-${contract._id}`,
+            }
+          );
         } else {
-          toast.success(message);
+          toast.success(
+            response?.data?.message || "Phê duyệt hợp đồng thành công!"
+          );
         }
 
         setApprovalDialogOpen(false);
@@ -295,11 +305,56 @@ const Approval = () => {
     handleMenuClose();
   };
 
-  const confirmApprove = () => {
-    approveContractMutation.mutate({
-      contractId: selectedContract._id,
-      comment: comment,
-    });
+  const confirmApprove = async () => {
+    // USER WALLET SIGNING - User ký transaction phê duyệt qua MetaMask
+    try {
+      setShowBlockchainProgress(true);
+      setBlockchainMessage("Đang kết nối MetaMask...");
+
+      // 1. Kết nối ví nếu chưa kết nối
+      if (!userAddress) {
+        toast.loading("Vui lòng kết nối MetaMask...", { id: "wallet-connect" });
+        const address = await userBlockchainService.connectWallet();
+        setUserAddress(address);
+        toast.success("Đã kết nối ví!", { id: "wallet-connect" });
+      }
+
+      // 2. User ký transaction phê duyệt trên blockchain
+      setBlockchainMessage("Vui lòng xác nhận giao dịch trong MetaMask...");
+      toast.loading("Chờ xác nhận từ MetaMask...", { id: "tx-sign" });
+
+      const txResult = await userBlockchainService.approveContract(
+        selectedContract.contractNumber,
+        comment || "Đã phê duyệt"
+      );
+
+      toast.success("Đã ký giao dịch thành công!", { id: "tx-sign" });
+      setBlockchainMessage("Đang lưu thông tin phê duyệt...");
+
+      // 3. Gửi thông tin phê duyệt + transaction hash về backend
+      approveContractMutation.mutate({
+        contractId: selectedContract._id,
+        comment: comment,
+        blockchain: {
+          transactionHash: txResult.transactionHash,
+          blockNumber: txResult.blockNumber,
+          contractAddress: txResult.contractAddress,
+        },
+      });
+    } catch (error) {
+      setShowBlockchainProgress(false);
+      console.error("User wallet signing error:", error);
+
+      if (error.code === 4001) {
+        toast.error("Bạn đã từ chối giao dịch trong MetaMask");
+      } else if (error.message?.includes("insufficient funds")) {
+        toast.error("Không đủ ETH để trả phí gas");
+      } else {
+        toast.error(
+          error.message || "Không thể thực hiện giao dịch blockchain"
+        );
+      }
+    }
   };
 
   const confirmReject = () => {

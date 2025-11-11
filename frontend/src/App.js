@@ -50,6 +50,12 @@ const generateTheme = (settings) => {
       body1: { fontSize: getFontSize() },
       body2: { fontSize: `calc(${getFontSize()} * 0.875)` },
       button: { fontWeight: 600, textTransform: "none" },
+      h1: { fontWeight: 700, fontSize: "2.5rem", lineHeight: 1.2 },
+      h2: { fontWeight: 700, fontSize: "2rem", lineHeight: 1.3 },
+      h3: { fontWeight: 700, fontSize: "1.75rem", lineHeight: 1.3 },
+      h4: { fontWeight: 700, fontSize: "1.5rem", lineHeight: 1.4 },
+      h5: { fontWeight: 700, fontSize: "1.25rem", lineHeight: 1.4 },
+      h6: { fontWeight: 600, fontSize: "1rem", lineHeight: 1.5 },
     },
     shape: {
       borderRadius: 12,
@@ -79,6 +85,34 @@ const generateTheme = (settings) => {
       MuiChip: {
         styleOverrides: { root: { borderRadius: 6, fontWeight: 500 } },
       },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none", // Remove default gradient in dark mode
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            backgroundImage: "none",
+          },
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            backgroundImage: "none",
+          },
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            backgroundImage: "none",
+          },
+        },
+      },
     },
   };
 
@@ -91,9 +125,32 @@ const generateTheme = (settings) => {
     },
     dark: {
       mode: "dark",
-      primary: { main: settings.primaryColor || "#7c3aed" },
-      background: { default: "#111827", paper: "#1f2937" },
-      text: { primary: "#f9fafb", secondary: "#9ca3af" },
+      primary: {
+        main: settings.primaryColor || "#a855f7",
+        light: "#c084fc",
+        dark: "#7c3aed",
+      },
+      secondary: {
+        main: "#818cf8",
+        light: "#a5b4fc",
+        dark: "#6366f1",
+      },
+      background: {
+        default: "#111827",
+        paper: "#1f2937",
+      },
+      text: {
+        primary: "#f9fafb",
+        secondary: "#9ca3af",
+      },
+      divider: "rgba(255, 255, 255, 0.12)",
+      action: {
+        active: "#fff",
+        hover: "rgba(255, 255, 255, 0.08)",
+        selected: "rgba(255, 255, 255, 0.16)",
+        disabled: "rgba(255, 255, 255, 0.3)",
+        disabledBackground: "rgba(255, 255, 255, 0.12)",
+      },
     },
   };
 
@@ -106,15 +163,87 @@ const DynamicThemeProvider = ({ children }) => {
   const { user } = useAuth();
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
+  // Load settings from localStorage first
+  const [cachedSettings, setCachedSettings] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem("systemSettings");
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.error("Error loading cached settings:", error);
+      return null;
+    }
+  });
+
+  // Check for preview settings (when editing)
+  const [previewSettings, setPreviewSettings] = React.useState(null);
+
+  React.useEffect(() => {
+    const checkPreview = () => {
+      try {
+        const preview = localStorage.getItem("systemSettings_preview");
+        if (preview) {
+          setPreviewSettings(JSON.parse(preview));
+        } else {
+          setPreviewSettings(null);
+        }
+      } catch (error) {
+        console.error("Error loading preview settings:", error);
+      }
+    };
+
+    const handleSettingsUpdate = () => {
+      // When settings are saved, reload from localStorage
+      try {
+        const saved = localStorage.getItem("systemSettings");
+        if (saved) {
+          setCachedSettings(JSON.parse(saved));
+        }
+      } catch (error) {
+        console.error("Error reloading settings:", error);
+      }
+      checkPreview();
+    };
+
+    // Check immediately
+    checkPreview();
+
+    // Listen for settings updates
+    window.addEventListener("settingsUpdated", handleSettingsUpdate);
+
+    // Check periodically for preview changes
+    const interval = setInterval(checkPreview, 500);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("settingsUpdated", handleSettingsUpdate);
+    };
+  }, []);
+
   const { data: settings } = useQuery(
     "systemSettings",
     settingsAPI.getSettings,
     {
       enabled: !!user,
       select: (data) => data.data.settings,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
-      retry: false,
+      staleTime: Infinity, // Never consider data stale
+      cacheTime: Infinity, // Keep in cache forever
+      refetchOnMount: false, // Don't refetch on component mount
+      refetchOnWindowFocus: false, // Don't refetch on window focus to prevent reset
+      refetchOnReconnect: false, // Don't refetch on reconnect
+      refetchInterval: false, // Disable auto refetch to prevent reset
+      retry: 1,
+      onSuccess: (data) => {
+        // Only save to localStorage if there's no preview active
+        const hasPreview = localStorage.getItem("systemSettings_preview");
+        if (!hasPreview) {
+          try {
+            localStorage.setItem("systemSettings", JSON.stringify(data));
+            setCachedSettings(data);
+          } catch (error) {
+            console.error("Error saving settings to localStorage:", error);
+          }
+        }
+      },
     }
   );
 
@@ -125,7 +254,19 @@ const DynamicThemeProvider = ({ children }) => {
     compactMode: false,
   };
 
-  const activeSettings = settings || defaultSettings;
+  // Use preview if editing, otherwise use cached or fetched settings
+  const activeSettings =
+    previewSettings || settings || cachedSettings || defaultSettings;
+
+  // Debug log
+  React.useEffect(() => {
+    console.log("📊 Settings state:", {
+      hasPreview: !!previewSettings,
+      hasSettings: !!settings,
+      hasCached: !!cachedSettings,
+      active: activeSettings,
+    });
+  }, [previewSettings, settings, cachedSettings, activeSettings]);
 
   // Determine the effective theme mode
   const effectiveTheme =
@@ -134,6 +275,15 @@ const DynamicThemeProvider = ({ children }) => {
         ? "dark"
         : "light"
       : activeSettings.theme;
+
+  // Debug: Log theme changes
+  React.useEffect(() => {
+    console.log("🎨 Theme settings:", {
+      activeTheme: activeSettings.theme,
+      effectiveTheme,
+      primaryColor: activeSettings.primaryColor,
+    });
+  }, [activeSettings.theme, effectiveTheme, activeSettings.primaryColor]);
 
   const theme = generateTheme({ ...activeSettings, theme: effectiveTheme });
 

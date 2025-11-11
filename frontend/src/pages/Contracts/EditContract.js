@@ -24,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from "react-query";
 import { contractAPI } from "../../services/api";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import BlockchainProgressNotification from "../../components/Common/BlockchainProgressNotification";
+import userBlockchainService from "../../services/userBlockchainService";
 import toast from "react-hot-toast";
 
 const validationSchema = yup.object({
@@ -49,8 +50,9 @@ const EditContract = () => {
   const queryClient = useQueryClient();
   const [showBlockchainProgress, setShowBlockchainProgress] = useState(false);
   const [blockchainMessage, setBlockchainMessage] = useState("");
+  const [userAddress, setUserAddress] = useState(null);
 
-  const { data: contractData, isLoading } = useQuery(
+  const { data: contractResponse, isLoading } = useQuery(
     ["contract", id],
     () => contractAPI.getContract(id),
     {
@@ -61,21 +63,22 @@ const EditContract = () => {
   const formik = useFormik({
     enableReinitialize: true,
     initialValues: {
-      contractName: contractData?.data?.data?.contract?.contractName || "",
-      contractor: contractData?.data?.data?.contract?.contractor || "",
-      contractValue: contractData?.data?.data?.contract?.contractValue || "",
-      currency: contractData?.data?.data?.contract?.currency || "VND",
-      startDate: contractData?.data?.data?.contract?.startDate
-        ? dayjs(contractData.data.data.contract.startDate)
+      contractName: contractResponse?.data?.data?.contract?.contractName || "",
+      contractor: contractResponse?.data?.data?.contract?.contractor || "",
+      contractValue:
+        contractResponse?.data?.data?.contract?.contractValue || "",
+      currency: contractResponse?.data?.data?.contract?.currency || "VND",
+      startDate: contractResponse?.data?.data?.contract?.startDate
+        ? dayjs(contractResponse.data.data.contract.startDate)
         : null,
-      endDate: contractData?.data?.data?.contract?.endDate
-        ? dayjs(contractData.data.data.contract.endDate)
+      endDate: contractResponse?.data?.data?.contract?.endDate
+        ? dayjs(contractResponse.data.data.contract.endDate)
         : null,
-      description: contractData?.data?.data?.contract?.description || "",
-      contractType: contractData?.data?.data?.contract?.contractType || "",
-      department: contractData?.data?.data?.contract?.department || "",
+      description: contractResponse?.data?.data?.contract?.description || "",
+      contractType: contractResponse?.data?.data?.contract?.contractType || "",
+      department: contractResponse?.data?.data?.contract?.department || "",
       responsiblePerson:
-        contractData?.data?.data?.contract?.responsiblePerson || "",
+        contractResponse?.data?.data?.contract?.responsiblePerson || "",
     },
     validationSchema: validationSchema,
     onSubmit: async (values) => {
@@ -85,7 +88,67 @@ const EditContract = () => {
         endDate: values.endDate.toISOString(),
       };
 
-      updateContractMutation.mutate(contractData);
+      // Lấy contractNumber từ data hiện tại
+      const contractNumber =
+        contractResponse?.data?.data?.contract?.contractNumber;
+
+      if (!contractNumber) {
+        toast.error("Không tìm thấy số hợp đồng");
+        return;
+      }
+
+      // USER WALLET SIGNING - User ký transaction qua MetaMask
+      try {
+        setShowBlockchainProgress(true);
+        setBlockchainMessage("Đang kết nối MetaMask...");
+
+        // 1. Kết nối ví nếu chưa kết nối
+        if (!userAddress) {
+          toast.loading("Vui lòng kết nối MetaMask...", {
+            id: "wallet-connect",
+          });
+          const address = await userBlockchainService.connectWallet();
+          setUserAddress(address);
+          toast.success("Đã kết nối ví!", { id: "wallet-connect" });
+        }
+
+        // 2. User ký transaction cập nhật trên blockchain
+        setBlockchainMessage("Vui lòng xác nhận giao dịch trong MetaMask...");
+        toast.loading("Chờ xác nhận từ MetaMask...", { id: "tx-sign" });
+
+        const txResult = await userBlockchainService.updateContract(
+          contractNumber,
+          contractData
+        );
+
+        toast.success("Đã ký giao dịch thành công!", { id: "tx-sign" });
+        setBlockchainMessage("Đang lưu thông tin...");
+
+        // 3. Gửi thông tin + transaction hash về backend
+        const dataWithBlockchain = {
+          ...contractData,
+          blockchain: {
+            transactionHash: txResult.transactionHash,
+            blockNumber: txResult.blockNumber,
+            contractAddress: txResult.contractAddress,
+          },
+        };
+
+        updateContractMutation.mutate(dataWithBlockchain);
+      } catch (error) {
+        setShowBlockchainProgress(false);
+        console.error("User wallet signing error:", error);
+
+        if (error.code === 4001) {
+          toast.error("Bạn đã từ chối giao dịch trong MetaMask");
+        } else if (error.message?.includes("insufficient funds")) {
+          toast.error("Không đủ ETH để trả phí gas");
+        } else {
+          toast.error(
+            error.message || "Không thể thực hiện giao dịch blockchain"
+          );
+        }
+      }
     },
   });
 
@@ -93,25 +156,31 @@ const EditContract = () => {
     (contractData) => contractAPI.updateContract(id, contractData),
     {
       onMutate: (variables) => {
-        if (variables.status !== "draft") {
-          setShowBlockchainProgress(true);
-          setBlockchainMessage(
-            "Đang cập nhật hợp đồng và lưu lên blockchain..."
-          );
-        }
+        // Progress đã được hiển thị ở onSubmit
       },
       onSuccess: (response, variables) => {
         setShowBlockchainProgress(false);
         queryClient.invalidateQueries(["contract", id]);
         queryClient.invalidateQueries("contracts");
 
-        const isDraft = variables.status === "draft";
-        toast.success(
-          isDraft
-            ? "Lưu bản nháp thành công!"
-            : "Cập nhật hợp đồng thành công!\n✅ Đã lưu lên blockchain!"
-        );
-        navigate(`/contracts/${id}`);
+        const contract = response.data.data.contract;
+
+        if (contract?.blockchain?.transactionHash) {
+          console.log(
+            "✅ Contract updated with blockchain:",
+            contract.blockchain.transactionHash
+          );
+
+          toast.success("Cập nhật hợp đồng và lưu lên blockchain thành công!", {
+            duration: 3000,
+            id: `update-contract-${contract._id}`,
+          });
+
+          navigate(`/contracts/${id}`);
+        } else {
+          toast.success("Cập nhật hợp đồng thành công!");
+          navigate(`/contracts/${id}`);
+        }
       },
       onError: (error) => {
         setShowBlockchainProgress(false);
@@ -124,7 +193,7 @@ const EditContract = () => {
 
   if (isLoading) return <LoadingSpinner />;
 
-  const contract = contractData?.data?.data?.contract;
+  const contract = contractResponse?.data?.data?.contract;
   if (!contract) return <div>Contract not found</div>;
 
   const contractTypes = [
