@@ -236,6 +236,14 @@ const schemas = {
       .optional(),
     department: Joi.string().max(100).optional(),
     position: Joi.string().max(100).optional(),
+    walletAddress: Joi.string()
+      .pattern(/^0x[a-fA-F0-9]{40}$/)
+      .optional()
+      .allow("")
+      .messages({
+        "string.pattern.base":
+          "Địa chỉ ví Ethereum không hợp lệ (phải bắt đầu bằng 0x và có 40 ký tự hex)",
+      }),
   }),
 
   changePassword: Joi.object({

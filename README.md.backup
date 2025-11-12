@@ -468,7 +468,7 @@ npm install
 
 ⚠️ **LƯU Ý**: Smart contract đã được deploy lên Sepolia rồi!
 
-- ✅ Contract address: `0xa6315fC859Bc66C7D8269eE4FA2a3e7ada2ae39f`
+- ✅ Contract address: `0x73fdfbb38c4a6a652306c898a99613df79624353`
 - ✅ Bạn KHÔNG CẦN chạy `blockchain/` module
 - ✅ Chỉ cần cấu hình `BLOCKCHAIN_CONTRACT_ADDRESS` trong `config.env`
 
@@ -551,7 +551,7 @@ http://localhost:5000/api
 ### Blockchain Explorer:
 
 ```
-https://sepolia.etherscan.io/address/0xa6315fC859Bc66C7D8269eE4FA2a3e7ada2ae39f
+https://sepolia.etherscan.io/address/0x73fdfbb38c4a6a652306c898a99613df79624353
 ```
 
 ---
@@ -605,7 +605,7 @@ https://sepolia.etherscan.io/address/0xa6315fC859Bc66C7D8269eE4FA2a3e7ada2ae39f
 ### Smart Contract Address (Sepolia):
 
 ```
-0xa6315fC859Bc66C7D8269eE4FA2a3e7ada2ae39f
+0x73fdfbb38c4a6a652306c898a99613df79624353
 ```
 
 ### Cách hoạt động:

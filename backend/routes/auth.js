@@ -264,6 +264,7 @@ router.put(
         "phone",
         "department",
         "position",
+        "walletAddress",
       ];
       const updates = {};
 
@@ -276,19 +277,26 @@ router.put(
 
       // Check if email or username already exists (excluding current user)
       if (updates.email || updates.username) {
-        const existingUser = await User.findOne({
-          $or: [
-            updates.email ? { email: updates.email } : {},
-            updates.username ? { username: updates.username } : {},
-          ],
-          _id: { $ne: req.user._id },
-        });
+        const orConditions = [];
+        if (updates.email) {
+          orConditions.push({ email: updates.email });
+        }
+        if (updates.username) {
+          orConditions.push({ username: updates.username });
+        }
 
-        if (existingUser) {
-          return res.status(400).json({
-            status: "error",
-            message: "Email or username already exists",
+        if (orConditions.length > 0) {
+          const existingUser = await User.findOne({
+            $or: orConditions,
+            _id: { $ne: req.user._id },
           });
+
+          if (existingUser) {
+            return res.status(400).json({
+              status: "error",
+              message: "Email or username already exists",
+            });
+          }
         }
       }
 
