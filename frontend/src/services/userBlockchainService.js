@@ -120,6 +120,29 @@ class UserBlockchainService {
   }
 
   /**
+   * Verify wallet address khớp với profile
+   */
+  async verifyWalletAddress(expectedAddress) {
+    if (!this.signer) {
+      throw new Error("Chưa kết nối ví. Vui lòng kết nối MetaMask trước!");
+    }
+
+    const currentAddress = await this.signer.getAddress();
+
+    if (currentAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+      throw new Error(
+        `Địa chỉ ví không khớp!\n` +
+          `Ví đang kết nối: ${currentAddress}\n` +
+          `Ví trong profile: ${expectedAddress}\n\n` +
+          `Vui lòng cập nhật địa chỉ ví trong Profile hoặc chuyển sang ví đúng trong MetaMask.`
+      );
+    }
+
+    console.log("✅ Địa chỉ ví đã được xác thực:", currentAddress);
+    return true;
+  }
+
+  /**
    * Tạo hợp đồng mới trên blockchain (USER KÝ TRANSACTION)
    * MetaMask sẽ popup yêu cầu user confirm và trả gas fee
    */
@@ -290,13 +313,20 @@ class UserBlockchainService {
   /**
    * Phê duyệt hợp đồng trên blockchain (USER KÝ TRANSACTION)
    */
-  async approveContract(contractNumber, approverName, comment = "") {
+  async approveContract(contractNumber, comment = "Đã phê duyệt") {
     if (!this.contract) {
       await this.connectWallet();
     }
 
     try {
       console.log("🚀 Gửi transaction phê duyệt...");
+
+      // Lấy thông tin approver
+      const approverAddress = await this.signer.getAddress();
+      const approverName = approverAddress.slice(0, 10) + "..."; // Sử dụng địa chỉ ví làm tên
+
+      console.log("📝 Phê duyệt bởi:", approverAddress);
+      console.log("📝 Comment:", comment);
 
       const tx = await this.contract.approveContract(
         contractNumber,
@@ -305,19 +335,29 @@ class UserBlockchainService {
       );
 
       console.log("⏳ Transaction hash:", tx.hash);
+      console.log("⏳ Đang đợi confirmation...");
+
       const receipt = await tx.wait();
 
       console.log("✅ Approval confirmed!");
+      console.log("   Block number:", receipt.blockNumber);
 
       return {
         transactionHash: receipt.hash,
         blockNumber: receipt.blockNumber,
+        from: receipt.from,
       };
     } catch (error) {
       console.error("❌ Lỗi khi approve contract:", error);
 
       if (error.code === 4001 || error.code === "ACTION_REJECTED") {
-        throw new Error("Bạn đã từ chối transaction");
+        throw new Error("Bạn đã từ chối transaction trong MetaMask");
+      }
+
+      if (error.message?.includes("Contract must be in pending")) {
+        throw new Error(
+          "Hợp đồng phải ở trạng thái 'pending' hoặc 'draft' để phê duyệt"
+        );
       }
 
       throw error;

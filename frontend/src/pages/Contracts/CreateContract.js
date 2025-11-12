@@ -25,6 +25,7 @@ import { contractAPI, contractorAPI } from "../../services/api";
 import BlockchainProgressNotification from "../../components/Common/BlockchainProgressNotification";
 import TransactionSuccessDialog from "../../components/Blockchain/TransactionSuccessDialog";
 import userBlockchainService from "../../services/userBlockchainService";
+import { useAuth } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
 
 const validationSchema = yup.object({
@@ -48,6 +49,7 @@ const validationSchema = yup.object({
 const CreateContract = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [showBlockchainProgress, setShowBlockchainProgress] = useState(false);
   const [transactionDialog, setTransactionDialog] = useState({
     open: false,
@@ -104,7 +106,26 @@ const CreateContract = () => {
           toast.success("Đã kết nối ví!", { id: "wallet-connect" });
         }
 
-        // 2. User ký transaction trên blockchain
+        // 2. Verify wallet address khớp với profile
+        if (user.walletAddress) {
+          setBlockchainMessage("Đang xác thực địa chỉ ví...");
+          try {
+            await userBlockchainService.verifyWalletAddress(user.walletAddress);
+            toast.success("Địa chỉ ví đã được xác thực!", {
+              id: "wallet-verify",
+            });
+          } catch (verifyError) {
+            toast.error(verifyError.message, { duration: 6000 });
+            throw verifyError;
+          }
+        } else {
+          toast.warning(
+            "Bạn chưa cập nhật địa chỉ ví trong Profile. Transaction vẫn sẽ được thực hiện.",
+            { duration: 4000 }
+          );
+        }
+
+        // 3. User ký transaction trên blockchain
         setBlockchainMessage("Vui lòng xác nhận giao dịch trong MetaMask...");
         toast.loading("Chờ xác nhận từ MetaMask...", { id: "tx-sign" });
 
