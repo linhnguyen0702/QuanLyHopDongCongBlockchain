@@ -54,45 +54,94 @@ const Layout = ({ children }) => {
   const { user, logout, isAdmin, isManager } = useAuth();
 
   // Move menuItems inside the component to access the 't' function
+  // Use translated labels (with a Vietnamese fallback) so sidebar shows readable text
   const menuItems = [
-    { key: "sidebar.dashboard", icon: <DashboardIcon />, path: "/dashboard" },
-    { key: "sidebar.contracts", icon: <ContractIcon />, path: "/contracts" },
+    {
+      key: "sidebar.dashboard",
+      label:
+        t("sidebar.dashboard") !== "sidebar.dashboard"
+          ? t("sidebar.dashboard")
+          : "Tổng quan",
+      icon: <DashboardIcon />,
+      path: "/dashboard",
+    },
+    {
+      key: "sidebar.contracts",
+      label:
+        t("sidebar.contracts") !== "sidebar.contracts"
+          ? t("sidebar.contracts")
+          : "Hợp đồng",
+      icon: <ContractIcon />,
+      path: "/contracts",
+    },
     {
       key: "sidebar.approval",
+      label:
+        t("sidebar.approval") !== "sidebar.approval"
+          ? t("sidebar.approval")
+          : "Phê duyệt",
       icon: <ApprovalIcon />,
       path: "/approval",
       managerOnly: true,
     },
     {
       key: "sidebar.contractors",
+      label:
+        t("sidebar.contractors") !== "sidebar.contractors"
+          ? t("sidebar.contractors")
+          : "Nhà thầu",
       icon: <BusinessIcon />,
       path: "/contractors",
     },
     {
       key: "sidebar.reports",
+      label:
+        t("sidebar.reports") !== "sidebar.reports"
+          ? t("sidebar.reports")
+          : "Báo cáo",
       icon: <ReportIcon />,
       path: "/reports",
       managerOnly: true,
     },
     {
       key: "sidebar.audit",
+      label:
+        t("sidebar.audit") !== "sidebar.audit"
+          ? t("sidebar.audit")
+          : "Audit Trail",
       icon: <HistoryIcon />,
       path: "/audit",
       managerOnly: true,
     },
     {
       key: "sidebar.users",
+      label:
+        t("sidebar.users") !== "sidebar.users"
+          ? t("sidebar.users")
+          : "Người dùng",
       icon: <PeopleIcon />,
       path: "/users",
       adminOnly: true,
     },
     {
       key: "sidebar.security",
+      label:
+        t("sidebar.security") !== "sidebar.security"
+          ? t("sidebar.security")
+          : "Bảo mật",
       icon: <SecurityIcon />,
       path: "/security",
       adminOnly: true,
     },
-    { key: "sidebar.settings", icon: <SettingsIcon />, path: "/settings" },
+    {
+      key: "sidebar.settings",
+      label:
+        t("sidebar.settings") !== "sidebar.settings"
+          ? t("sidebar.settings")
+          : "Cài đặt",
+      icon: <SettingsIcon />,
+      path: "/settings",
+    },
   ];
 
   const handleDrawerToggle = () => {
@@ -259,7 +308,10 @@ const Layout = ({ children }) => {
                   {item.icon}
                 </ListItemIcon>
                 {!collapsed && (
-                  <ListItemText primary={t(item.key)} sx={{ ml: 2 }} />
+                  <ListItemText
+                    primary={item.label || t(item.key)}
+                    sx={{ ml: 2 }}
+                  />
                 )}
               </ListItemButton>
             </ListItem>
